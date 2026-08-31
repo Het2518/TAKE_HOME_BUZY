@@ -14,7 +14,18 @@ export default function CustomFieldsPanel({ projectId, isManager }) {
   const load = () =>
     fetch(`/api/projects/${projectId}/fields`)
       .then((r) => r.json())
-      .then(setFields);
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setFields(data);
+        } else {
+          setFields([]);
+          console.error("Failed to load fields:", data);
+        }
+      })
+      .catch((err) => {
+        setFields([]);
+        console.error("Error loading fields:", err);
+      });
 
   useEffect(() => { load(); }, [projectId]); // eslint-disable-line
 
