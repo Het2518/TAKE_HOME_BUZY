@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useTheme } from "@/hooks/useTheme";
+import { KeyboardShortcutsModal } from "@/components/KeyboardNav";
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();
@@ -61,15 +62,14 @@ export default function DashboardLayout({ children }) {
           {navLink("/board", "Board")}
           {navLink("/my-tasks", "My Tasks")}
           {navLink("/activity", "Activity")}
-          {navLink(
-            "/alerts",
-            "Alerts",
+          {navLink("/alerts", "Alerts",
             alertCount > 0 && (
               <span className="badge" style={{ background: "var(--danger)", color: "#fff", border: "none", marginLeft: 6 }}>
                 {alertCount}
               </span>
             )
           )}
+          {navLink("/digest", "📧 Digest")}
         </div>
         <div className="flex">
           <button
@@ -80,6 +80,14 @@ export default function DashboardLayout({ children }) {
           >
             {theme === "dark" ? "☀ Light" : "☾ Dark"}
           </button>
+          <button
+            className="secondary"
+            title="Keyboard shortcuts (?)"
+            style={{ padding: "4px 8px", fontSize: 13 }}
+            onClick={() => document.getElementById("kb-help-modal")?.classList.toggle("visible")}
+          >
+            ?
+          </button>
           <span style={{ color: "var(--text-dim)", fontSize: 13 }}>
             {user.name} ({user.role})
           </span>
@@ -87,6 +95,7 @@ export default function DashboardLayout({ children }) {
         </div>
       </nav>
       <main className="container">{children}</main>
+      <KeyboardShortcutsModal />
     </div>
   );
 }

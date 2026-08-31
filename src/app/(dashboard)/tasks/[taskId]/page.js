@@ -1,6 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import TimeTracker from "@/components/TimeTracker";
+import { highlightMentions, MentionInput } from "@/components/Mentions";
+import CustomFieldValues from "@/components/CustomFieldValues";
 
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
@@ -352,12 +355,23 @@ export default function TaskDetailPage({ params }) {
           {timeline.length === 0 && <p style={{ color: "var(--text-dim)", fontSize: 13 }}>No activity yet.</p>}
         </div>
         <form onSubmit={postComment} className="flex" style={{ marginTop: 12 }}>
-          <input placeholder="Add a comment" value={comment} onChange={(e) => setComment(e.target.value)} style={{ flex: 1 }} />
+          <MentionInput
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            users={allUsers}
+            placeholder="Add a comment… type @ to mention someone"
+          />
           <button type="submit" disabled={isPostingComment || !comment.trim()}>
             {isPostingComment ? <span className="spinner" /> : "Post"}
           </button>
         </form>
       </div>
+
+      {/* ── Time Tracker (stretch goal) ── */}
+      <TimeTracker taskId={taskId} />
+
+      {/* ── Custom Fields (stretch goal) ── */}
+      <CustomFieldValues taskId={taskId} />
     </div>
   );
 }
@@ -372,7 +386,7 @@ function describeEvent(e, userMap = {}) {
       return `${e.field} changed: "${e.oldValue ?? ""}" \u2192 "${e.newValue ?? ""}"`;
     case "ASSIGNED": return `Assigned ${name(e.newValue)} to this task.`;
     case "UNASSIGNED": return `Unassigned ${name(e.oldValue)} from this task.`;
-    case "COMMENT": return e.commentText;
+    case "COMMENT": return highlightMentions(e.commentText);
     default: return e.type;
   }
 }

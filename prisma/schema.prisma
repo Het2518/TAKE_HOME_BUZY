@@ -53,6 +53,7 @@ model User {
   events          TaskEvent[]
   dismissals      AlertDismissal[]
   savedFilters    SavedFilter[]
+  timeEntries     TimeEntry[]
 }
 
 model Project {
@@ -66,8 +67,9 @@ model Project {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  members ProjectMember[]
-  tasks   Task[]
+  members      ProjectMember[]
+  tasks        Task[]
+  customFields CustomFieldDefinition[]
 }
 
 // One-to-many: Project -> ProjectMember. Many-to-many Project <-> User realized through this join table.
@@ -96,9 +98,11 @@ model Task {
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
 
-  assignees TaskAssignee[]
-  events    TaskEvent[]
-  dismissals AlertDismissal[]
+  assignees        TaskAssignee[]
+  events           TaskEvent[]
+  dismissals       AlertDismissal[]
+  timeEntries      TimeEntry[]
+  customFieldValues CustomFieldValue[]
 
   // Self-referential many-to-many: a task can be blocked by many tasks, and can block many tasks.
   blockedBy TaskBlocker[] @relation("BlockedTask")
@@ -175,3 +179,57 @@ model AlertDismissal {
 
   @@unique([taskId, userId])
 }
+
+// STRETCH GOAL: time tracking. Each row is one start→stop session.
+// An open entry (endedAt = null) means the timer is currently running.
+// Only one open entry per (task, user) is allowed — enforced in the API.
+model TimeEntry {
+  id          String    @id @default(cuid())
+  taskId      String
+  userId      String
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+  description String    @default("")
+  createdAt   DateTime  @default(now())
+
+  @@index([taskId])
+  @@index([userId])
+}
+
+// STRETCH GOAL: per-project custom fields. Field definitions are owned by a project.
+// Supported types: TEXT, NUMBER, DATE, SELECT (options stored as JSON array string).
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DATE
+  SELECT
+}
+
+model CustomFieldDefinition {
+  id        String          @id @default(cuid())
+  projectId String
+  project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  type      CustomFieldType @default(TEXT)
+  options   String?         // JSON array of option strings, only for SELECT type
+  createdAt DateTime        @default(now())
+
+  values CustomFieldValue[]
+
+  @@unique([projectId, name])
+}
+
+model CustomFieldValue {
+  id        String                @id @default(cuid())
+  taskId    String
+  fieldId   String
+  task      Task                  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  field     CustomFieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  value     String                @default("")
+  updatedAt DateTime              @updatedAt
+
+  @@unique([taskId, fieldId])
+}
+

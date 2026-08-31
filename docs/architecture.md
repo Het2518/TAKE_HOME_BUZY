@@ -198,16 +198,6 @@ GET /api/tasks?search=design&status=IN_PROGRESS&sortBy=updatedAt&sortDir=desc&pa
 
 ## What was deliberately not built, and why
 
-**Email digest** — Requires a transactional email provider (Resend, SendGrid) and a scheduled background process. Vercel serverless has no persistent background processes — you'd need a separate cron service (GitHub Actions, Vercel Cron — which is a paid feature). The alert system covers the same user need synchronously. Estimated additional effort: ~4h for minimal implementation, significant ongoing maintenance.
-
-**@-mentions in comments** — The comment infrastructure (`TaskEvent` with `type: COMMENT`) already exists. Mentions would require parsing `@username` in the `commentText` field server-side and creating a notification record per mentioned user. There is no notification model in the schema, and without email delivery there is nowhere to surface the notification except another "mentions" alert system. Skipped because it depends on the email digest infrastructure.
-
-**Time tracking** — Would require a `TimeEntry` table (`id`, `taskId`, `userId`, `startedAt`, `endedAt`) and a start/stop toggle UI on the task detail page. The dashboard would need a new "hours logged this week" aggregate. Not a required goal; estimated 3h of additional work.
-
-**Keyboard navigation** — Requires `tabIndex`, `onKeyDown`, focus management, and screen-reader ARIA labels throughout. The current UI is mouse/touch driven. Not a required goal and incompatible with the remaining time budget.
-
-**Per-project custom fields** — Would need a polymorphic schema: `CustomFieldDefinition` (per project, with type enum: TEXT/NUMBER/DATE/SELECT) and `CustomFieldValue` (per task, FK to both task and definition, with a string value column). The task CRUD, the filter system, the CSV export, and the audit trail would all need to handle custom fields. Estimated 6h+ of additional work; explicitly marked optional in the brief.
-
 **Refresh token rotation** — The JWT expires in 7 days with no refresh mechanism. Production would issue a 15-minute access token and a 7-day refresh token. Not built because the brief's threat model (internal team tool, known users) does not require sub-day token revocation, and adding it would need a `RefreshToken` table and two extra route handlers.
 
 **Real-time updates** — Changes made by one user are not pushed to another user's browser; they must refresh to see them. Implementing this would require WebSockets or Server-Sent Events. Next.js serverless functions cannot hold long-lived connections. A real-time layer would require a separate infrastructure piece (Ably, Pusher, or Supabase Realtime). Not worth the complexity for the required goals.

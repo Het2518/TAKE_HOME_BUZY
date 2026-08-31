@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import CustomFieldsPanel from "@/components/CustomFieldsPanel";
 
 export default function ProjectDetailPage({ params }) {
   const { user } = useCurrentUser();
@@ -148,6 +149,11 @@ export default function ProjectDetailPage({ params }) {
           ))}
         </tbody>
       </table>
+
+      {/* ── Custom Field Definitions (stretch goal) ── */}
+      <div className="card">
+        <CustomFieldsPanel projectId={projectId} isManager={user?.role === "MANAGER"} />
+      </div>
     </div>
   );
 }
