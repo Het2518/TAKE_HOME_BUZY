@@ -11,12 +11,17 @@ export default function ProjectsPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ key: "", name: "", description: "", ownerId: "" });
   const [error, setError] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
   const [users, setUsers] = useState([]);
 
-  function load() {
-    fetch("/api/projects").then((r) => r.json()).then(setProjects);
+  function load(archived = showArchived) {
+    const url = archived ? "/api/projects?includeArchived=true" : "/api/projects";
+    fetch(url).then((r) => r.json()).then(setProjects);
   }
-  useEffect(load, []);
+  
+  useEffect(() => {
+    load(showArchived);
+  }, [showArchived]);
 
   useEffect(() => {
     if (user?.role === "MANAGER") {
@@ -67,13 +72,20 @@ export default function ProjectsPage() {
       <div className="flex-between">
         <div>
           <h1 style={{ margin: 0 }}>Projects</h1>
-          {projects && <p style={{ margin: "4px 0 0 0", color: "var(--text-dim)", fontSize: 14 }}>{projects.length} active projects</p>}
+          {projects && <p style={{ margin: "4px 0 0 0", color: "var(--text-dim)", fontSize: 14 }}>{projects.filter(p => !p.archived).length} active projects</p>}
         </div>
-        {user?.role === "MANAGER" && (
-          <button className={showForm ? "secondary" : "primary"} onClick={() => setShowForm((s) => !s)}>
-            {showForm ? "Cancel" : "New project"}
+        
+        <div className="flex" style={{ gap: 12 }}>
+          <button className="ghost" onClick={() => setShowArchived((s) => !s)}>
+            {showArchived ? "Hide archived" : "Show archived"}
           </button>
-        )}
+          
+          {user?.role === "MANAGER" && (
+            <button className={showForm ? "secondary" : "primary"} onClick={() => setShowForm((s) => !s)}>
+              {showForm ? "Cancel" : "New project"}
+            </button>
+          )}
+        </div>
       </div>
 
       {showForm && (
