@@ -21,9 +21,10 @@ export function ToastProvider({ children }) {
         {toasts.map((toast) => (
           <div key={toast.id} className="toast">
             {toast.type === "success" && <span style={{ color: "var(--success)" }}>✓</span>}
-            {toast.type === "error" && <span style={{ color: "var(--danger)" }}>!</span>}
-            {toast.type === "info" && <span style={{ color: "var(--accent)" }}>i</span>}
-            <span>{toast.message}</span>
+            {toast.type === "error" && <span style={{ color: "var(--danger)" }}>✕</span>}
+            {toast.type === "info" && <span style={{ color: "var(--text-dim)" }}>ℹ</span>}
+            {toast.type === "warning" && <span style={{ color: "var(--warning)" }}>⚠</span>}
+            <span style={{ fontSize: 14, fontWeight: 500 }}>{toast.message}</span>
           </div>
         ))}
       </div>

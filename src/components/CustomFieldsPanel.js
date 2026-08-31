@@ -91,7 +91,7 @@ export default function CustomFieldsPanel({ projectId, isManager }) {
               style={{ flex: 2, minWidth: 160 }}
             />
           )}
-          <button type="submit" disabled={adding || !newName.trim()}>
+          <button type="submit" className="primary" disabled={adding || !newName.trim()}>
             {adding ? <span className="spinner" /> : "Add Field"}
           </button>
           {error && <span style={{ color: "var(--danger)", fontSize: 13, width: "100%" }}>{error}</span>}

@@ -1,10 +1,10 @@
-export function Skeleton({ width, height, className = "", style = {} }) {
+export function Skeleton({ width = "100%", height = "20px", className = "", style = {} }) {
   return (
     <div
       className={`skeleton ${className}`}
       style={{
-        width: width || "100%",
-        height: height || "20px",
+        width,
+        height,
         ...style,
       }}
     />

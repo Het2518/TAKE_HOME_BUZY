@@ -351,7 +351,7 @@ export default function TaskDetailPage({ params }) {
             <div className="flex" style={{ flexWrap: "wrap", marginBottom: 16 }}>
               {task.assignees.map((a) => (
                 <span key={a.id} className="badge flex animate-slide-up" style={{ gap: 6, padding: "4px 8px", background: "var(--panel-hover)" }}>
-                  <div style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 }}>
+                  <div style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--accent)", color: "var(--accent-contrast)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 }}>
                     {a.user.name.charAt(0)}
                   </div>
                   {a.user.name}

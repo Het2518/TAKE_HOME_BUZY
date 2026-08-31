@@ -77,12 +77,12 @@ export default function TimeTracker({ taskId }) {
           style={{ flex: 1 }}
         />
         {openEntry ? (
-          <button onClick={stopTimer} style={{ background: "var(--danger)", color: "#fff", border: "none" }}>
-            ⏹ Stop (<LiveTimer startedAt={openEntry.startedAt} />)
+          <button className="danger" onClick={stopTimer}>
+            Stop Timer
           </button>
         ) : (
-          <button onClick={startTimer} style={{ background: "var(--success)", color: "#fff", border: "none" }}>
-            ▶ Start
+          <button className="primary" style={{ background: "var(--success)" }} onClick={startTimer}>
+            Start Timer
           </button>
         )}
       </div>

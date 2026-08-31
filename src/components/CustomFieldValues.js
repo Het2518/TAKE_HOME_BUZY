@@ -71,7 +71,7 @@ export default function CustomFieldValues({ taskId }) {
           ))}
         </div>
         {Object.keys(dirty).length > 0 && (
-          <button type="submit" disabled={saving} style={{ marginTop: 12 }}>
+          <button type="submit" className="primary" disabled={saving} style={{ marginTop: 12 }}>
             {saving ? <span className="spinner" /> : "Save custom fields"}
           </button>
         )}
