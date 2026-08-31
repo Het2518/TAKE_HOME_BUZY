@@ -98,9 +98,28 @@ export default function ProjectDetailPage({ params }) {
         </div>
         <div className="flex-between" style={{ alignItems: "flex-start" }}>
           <div>
-            <h1 style={{ margin: 0 }}>{project.name}</h1>
+            <div className="flex">
+              <h1 style={{ margin: 0 }}>{project.name}</h1>
+              {project.archived && <span className="badge BACKLOG">Archived</span>}
+            </div>
             <p style={{ color: "var(--text-dim)", marginTop: 8, fontSize: 15, maxWidth: 600 }}>{project.description}</p>
           </div>
+          
+          {user?.role === "MANAGER" && (
+            <button 
+              className="secondary" 
+              onClick={async () => {
+                await fetch(`/api/projects/${project.id}/archive`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ archived: !project.archived }),
+                });
+                loadProject();
+              }}
+            >
+              {project.archived ? "Restore Project" : "Archive Project"}
+            </button>
+          )}
         </div>
       </div>
 

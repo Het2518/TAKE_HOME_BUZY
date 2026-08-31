@@ -72,12 +72,12 @@ async function runTests() {
   // ==========================================
   console.log('\n--- GOAL 2: Projects ---');
   // Member tries to create project (should fail)
-  res = await api('/api/projects', { 
-    method: 'POST', 
+  res = await api('/api/projects', {
+    method: 'POST',
     body: JSON.stringify({ key: 'FAIL', name: 'Member Proj', description: '' })
   }, 'member');
   assert(res.status === 403 || res.status === 401, 'Member should not be able to create projects');
-  
+
   // Manager creates project
   // Get users for assignment and ownership
   res = await api('/api/users', { method: 'GET' }, 'manager');
@@ -87,8 +87,8 @@ async function runTests() {
   assert(managerUser && testUser, 'Should find test manager and member in users list');
 
   const projKey = `TEST${Math.floor(Math.random() * 1000)}`;
-  res = await api('/api/projects', { 
-    method: 'POST', 
+  res = await api('/api/projects', {
+    method: 'POST',
     body: JSON.stringify({ key: projKey, name: 'E2E Test Project', description: 'Testing', ownerId: managerUser.id })
   }, 'manager');
   assert(res.status === 201 && res.data.id, 'Manager should be able to create a project', res.data);
@@ -110,11 +110,11 @@ async function runTests() {
   // Create main task blocked by the blocker
   res = await api('/api/tasks', {
     method: 'POST',
-    body: JSON.stringify({ 
-      title: 'Main Task', 
-      projectId: testProjectId, 
+    body: JSON.stringify({
+      title: 'Main Task',
+      projectId: testProjectId,
       priority: 'MEDIUM',
-      blockingTaskIds: [blockingTaskId] 
+      blockingTaskIds: [blockingTaskId]
     })
   }, 'manager');
   assert(res.status === 201 || res.status === 200, 'Manager should create main task with dependency', res.data);
@@ -127,8 +127,8 @@ async function runTests() {
   console.log('\n--- GOAL 5: Assignment ---');
 
   // Assign user to project first
-  await api(`/api/projects/${testProjectId}/members`, { 
-    method: 'POST', body: JSON.stringify({ userId: testUser.id }) 
+  await api(`/api/projects/${testProjectId}/members`, {
+    method: 'POST', body: JSON.stringify({ userId: testUser.id })
   }, 'manager');
 
   // Assign user to task
@@ -143,14 +143,14 @@ async function runTests() {
   // GOAL 4: Task Lifecycle Rules (State Machine)
   // ==========================================
   console.log('\n--- GOAL 4: Task Lifecycle & Rules ---');
-  
+
   // Try illegal transition (BACKLOG -> DONE directly)
   res = await api(`/api/tasks/${testTaskId}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ targetStatus: 'DONE' })
   }, 'manager');
   assert(res.status === 422, 'Should reject illegal jump from BACKLOG to DONE', res.data);
-  
+
   // Try legal transition (BACKLOG -> IN_PROGRESS)
   res = await api(`/api/tasks/${testTaskId}/status`, {
     method: 'PATCH',
@@ -225,9 +225,9 @@ async function runTests() {
   pastDate.setDate(pastDate.getDate() - 5);
   res = await api('/api/tasks', {
     method: 'POST',
-    body: JSON.stringify({ 
-      title: 'Overdue Task', 
-      projectId: testProjectId, 
+    body: JSON.stringify({
+      title: 'Overdue Task',
+      projectId: testProjectId,
       dueDate: pastDate.toISOString()
     })
   }, 'manager');
@@ -250,7 +250,7 @@ async function runTests() {
   // Dismiss alert
   res = await api(`/api/alerts/${overdueId}/dismiss`, { method: 'POST' }, 'member');
   assert(res.status === 200, 'Member should be able to dismiss alert');
-  
+
   // Verify alert is gone
   res = await api('/api/alerts', { method: 'GET' }, 'member');
   const hasAlertAfter = res.data.alerts.some(a => a.id === overdueId);
