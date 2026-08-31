@@ -2,8 +2,8 @@
 
 ## Links
 
-- **GitHub repository:** <add your public GitHub repo URL here before submitting>
-- **Live application:** <add your Vercel deployment URL here before submitting>
+- **GitHub repository:** https://github.com/Het2518/TAKE_HOME_BUZY
+- **Live application:** https://task-home-one.vercel.app
 
 ## Notes for the reviewer
 
@@ -87,6 +87,11 @@ You can also sign up as a new user at `/signup` — new accounts are always crea
 | Drag-and-drop Kanban board | `src/app/(dashboard)/board/page.js` |
 | Saved filter views | `SavedFilter` model; `GET/POST /api/saved-filters`; delete per filter |
 | Cross-project activity feed | `GET /api/activity`; paginated; role-scoped |
+| Time tracking | `TimeEntry` model, `<TimeTracker />`, `/api/tasks/:id/time` |
+| @-mentions in comments | `MentionInput`, `highlightMentions`, parses raw text |
+| Email digest | `/api/digest`, Nodemailer SMTP transport, preview page |
+| Per-project custom fields | `CustomFieldDefinition`/`Value`, `<CustomFieldsPanel />` |
+| Keyboard navigation | `useKeyboardNav` global hook (`/`, `?`, `g+letter`) |
 
 ## How much time did you actually spend?
 
@@ -121,10 +126,7 @@ GROUP BY week ORDER BY week
 ```
 In Prisma this requires `prisma.$queryRaw` with tagged template literals — I avoided raw SQL to keep the codebase consistent, but at any real data scale this query would be the first performance issue.
 
-**4. Email notifications on assignment and overdue (~3h)**
-Requires: Resend (free tier, 100 emails/day) for delivery, and a Vercel Cron Job (once daily) to query overdue tasks and send digests. The data model is already in place — the alert system has the right query; it just needs a send step added.
-
-**5. Real-time updates via Supabase Realtime (~3h)**
+**4. Real-time updates via Supabase Realtime (~3h)**
 Changes made in one browser tab are not pushed to another user's tab. Supabase exposes a Postgres change-data-capture WebSocket feed that can be subscribed to from the browser. Wiring it up would make status changes and new assignments appear in other users' open tabs without a refresh.
 
 ## What are you least happy with in this codebase, and why?
