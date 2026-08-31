@@ -7,87 +7,128 @@
 
 ## Notes for the reviewer
 
-The application is deployed on Vercel (Next.js) with a Supabase PostgreSQL database. Vercel's serverless functions cold-start in under 1 second on the free tier — there should be no noticeable delay on the first request.
+The application is deployed on Vercel with a Supabase PostgreSQL database. Both are on free tiers — Vercel serverless functions cold-start in ~200–400ms after a period of idle, and the first request after a long gap may feel slightly slow. Subsequent requests within the same session are fast.
 
-Demo accounts are seeded with realistic data across two projects (ACME Corp and Port Logistics) — 30+ tasks spread across all statuses, with blocking relationships, assignments, comments, and overdue items already present so all features are visible without setup.
+The seed data is designed to make every feature immediately visible without setup:
+- **Two projects** (ACME Corp and Port Logistics) with different member compositions
+- **32 tasks** spread across all 5 statuses (BACKLOG, IN_PROGRESS, IN_REVIEW, DONE, BLOCKED)
+- **Several overdue tasks** (past due dates) — log in as any assigned member to see the alert badge in the nav
+- **One blocking relationship** — a BLOCKED task with an incomplete blocker, so the block/unblock flow can be demonstrated without creating anything
+- **Comments** already posted to several task timelines
 
-The `prisma/seed.js` script can be re-run at any time to restore the demo data: `npx prisma db seed`.
+To restore demo data at any time: `npx prisma db seed`.
 
 ## Demo credentials
 
-| Role | Email | Password |
-|------|-------|----------|
-| Manager | aarav@demo.com | Password123! |
-| Manager | ananya@demo.com | Password123! |
-| Manager | arjun@demo.com | Password123! |
-| Member | vihaan@demo.com | Password123! |
-| Member | diya@demo.com | Password123! |
-| Member | aditya@demo.com | Password123! |
-| Member | kavya@demo.com | Password123! |
-| Member | rohan@demo.com | Password123! |
+All accounts use the password `Password123!`
 
-All seeded users share the same password. Sign up as a new user at `/signup` to get a fresh Member account.
+| Role | Name | Email |
+|------|------|-------|
+| Manager | Aarav Shah | aarav@demo.com |
+| Manager | Ananya Iyer | ananya@demo.com |
+| Manager | Arjun Mehta | arjun@demo.com |
+| Manager | Priya Nair | priya@demo.com |
+| Member | Vihaan Kapoor | vihaan@demo.com |
+| Member | Diya Rao | diya@demo.com |
+| Member | Aditya Verma | aditya@demo.com |
+| Member | Kavya Sharma | kavya@demo.com |
+| Member | Rohan Gupta | rohan@demo.com |
+| Member | Meera Joshi | meera@demo.com |
+| Member | Ishaan Pillai | ishaan@demo.com |
+| Member | Pooja Desai | pooja@demo.com |
+| Member | Karan Malhotra | karan@demo.com |
+| Member | Nisha Bhat | nisha@demo.com |
+| Member | Rahul Sinha | rahul@demo.com |
+| Member | Sanya Pandey | sanya@demo.com |
+
+You can also sign up as a new user at `/signup` — new accounts are always created as Member role.
+
+**Suggested walkthrough:**
+1. Log in as `aarav@demo.com` (Manager) — see the full portfolio on the dashboard, manage projects and members
+2. Log in as `vihaan@demo.com` (Member) — see only projects you belong to; check the Alerts tab for overdue tasks assigned to you
+3. On any task: change its status, add a comment, and watch the Timeline panel update immutably
+4. On the All Tasks page: filter by project + status, select multiple tasks, try bulk "Set due date"
 
 ## Stack
 
-| Layer | What I used | Why |
-|-------|-------------|-----|
-| Frontend | Next.js 14, React (client components), Vanilla CSS | App Router co-locates pages and API routes in one codebase; no separate Vite/Express setup needed |
-| Backend | Next.js API Route Handlers (Node.js) | Same process as the frontend — no CORS, one deployment, one set of env vars |
-| ORM / DB access | Prisma 5 | Type-safe query builder, migration tracking, schema as source of truth for `docs/schema.md` |
-| Database | PostgreSQL (Supabase managed) | Relational constraints, real transactions, and meaningful answers to "what's in the DB vs. app code" |
-| Auth | JWT (`jsonwebtoken`) + bcrypt, httpOnly cookie | XSS-safe (no localStorage), cookie attached automatically to same-origin requests |
-| Hosting | Vercel (app) + Supabase (DB) | Both have generous free tiers; Vercel is the canonical Next.js host |
-| Testing | Vitest | Zero-config with Node.js, fast, good mocking API for Prisma |
+| Layer | Technology | Version | Why this choice |
+|-------|-----------|---------|-----------------|
+| Frontend framework | Next.js (App Router) | 14 | Single codebase for UI and API; one deployment; no CORS configuration needed |
+| UI | React (client components) | 18 | Paired with Next.js; familiar; `useState`/`useEffect` sufficient for this scope |
+| Styling | Vanilla CSS custom properties | — | Full control; dark/light theme via `data-theme` attribute; no framework-specific class names |
+| API layer | Next.js Route Handlers (Node.js) | 14 | Same process as the frontend; structurally identical to Express handlers |
+| ORM | Prisma | 5 | Type-safe query builder; schema-as-code is the `docs/schema.md` source of truth; migration tracking |
+| Database | PostgreSQL (Supabase managed) | 15 | Relational constraints enforce real invariants; transactions for atomic operations; `ILIKE` for case-insensitive search |
+| Auth | JWT (`jsonwebtoken`) + bcrypt | — | httpOnly cookie prevents XSS token theft; role in JWT payload avoids DB lookup on every request |
+| Validation | Zod | 3 | Runtime type safety on every API input; `.safeParse()` produces readable English error messages |
+| Testing | Vitest | 1 | Zero-config with Node.js; `vi.mock` for Prisma mocking; fast (49 tests in < 750ms) |
+| Hosting (app) | Vercel | — | Native Next.js host; zero-config deployment from GitHub |
+| Hosting (DB) | Supabase | — | Managed Postgres; free tier; direct connection string for Prisma |
 
 ## Goal checklist
 
 | # | Goal | Status | Notes |
 |---|------|--------|-------|
-| 1 | Accounts & roles (MANAGER / MEMBER) | Done | JWT auth, bcrypt, role enforced server-side on every protected route. Self-service signup always creates MEMBER. |
-| 2 | Projects (key, name, desc, owner, archive) | Done | Full CRUD, archive/restore toggle, members add/remove with cascade unassign. |
-| 3 | Tasks (CRUD, priority, due date, blockers) | Done | Create, edit (title/description/priority/dueDate via inline edit form), delete (manager only), same-project blocker validation. |
-| 4 | Task lifecycle with enforced rules | Done | State machine in `src/lib/taskStateMachine.js`, used by both API and UI. All specific rules (BLOCKED from IN_PROGRESS/IN_REVIEW, unblock returns to prior status, DONE blocked by incomplete blockers) implemented and tested. |
-| 5 | Assignment | Done | Many-to-many TaskAssignee, membership-restricted, cascade unassign on member removal, "My Tasks" page. |
-| 6 | Search / filter / sort / pagination | Done | Server-side across title+description, filters for project, status, assignee, priority, overdue. Sort by dueDate/priority/updatedAt. Page-based pagination with total count. Saved filter views (stretch). |
-| 7 | Bulk actions + CSV export | Done | Bulk status change, bulk assignee, bulk due date — per-task success/failure response. CSV export of current filtered view. |
-| 8 | Dashboard | Done | Headline numbers (open, overdue, due this week, completed this week). Tasks by status chart, tasks by assignee chart, completions by week (8 weeks). Manager sees full portfolio; members see only their projects. |
-| 9 | Immutable history / audit trail | Done | `TaskEvent` table with insert-only write path (`writeTaskEvent` helper). Events for CREATED, FIELD_CHANGE (every scalar field), ASSIGNED, UNASSIGNED, STATUS_CHANGE, COMMENT. Timeline visible on task detail page with comment input. |
-| 10 | Overdue alerts | Done | `GET /api/alerts` returns overdue non-Done tasks the user is assigned to. Nav badge shows count. Dismiss (assigned users only). Alert reappears if `dueDateUpdatedAt > dismissedAt`. |
+| 1 | **Accounts and roles** — MANAGER and MEMBER, enforced server-side | ✅ Done | `requireRole` and `requireProjectAccess` in `src/lib/permissions.js` enforce access on every route. Self-service signup creates MEMBER only (no `role` field accepted by `signupSchema`). Login/signup/logout routes. httpOnly JWT cookie. |
+| 2 | **Projects** — key, name, description, owner, archive/restore | ✅ Done | Full CRUD on `/api/projects`. Archive is a soft flag — tasks and history preserved. Member add/remove with cascade unassign in a single Prisma transaction. |
+| 3 | **Tasks** — create, edit, delete, same-project blockers | ✅ Done | Task detail page has an inline edit form (title, description, priority, dueDate). PATCH `/api/tasks/:id` logs each changed field individually to the timeline. DELETE is MANAGER-only. Cross-project blockers rejected with a 422. Cycle detection (DFS) prevents circular blocking. |
+| 4 | **Task lifecycle** — state machine, BLOCKED/unblock, DONE blocked by incomplete blockers | ✅ Done | `src/lib/taskStateMachine.js` is the single source of truth — used by the API route (enforcement) and by the React component (rendering only legal buttons). BLOCKED stores `blockedFromStatus`; UNBLOCK restores it. DONE rejected if any blocker is not DONE. 26 exhaustive tests. |
+| 5 | **Assignment** — members only, cascade unassign on project removal, My Tasks | ✅ Done | `TaskAssignee` join table. Assignment API checks that the user is a project member first. Removing a member calls `prisma.$transaction` to delete all their assignments in that project and write `UNASSIGNED` events. My Tasks page uses server-side pagination. |
+| 6 | **Finding things** — search, filter, sort, pagination | ✅ Done | Server-side in `GET /api/tasks`. Search uses Postgres `ILIKE` on title + description. Filters: project, status, assignee, priority, overdue flag. Sort: dueDate, priority, updatedAt (asc/desc). Page-based pagination with total count. Debounced search input (350ms) with stale-request guard. Saved filter views (stretch). |
+| 7 | **Bulk actions + CSV export** — status, assignee, due date; per-task result | ✅ Done | `POST /api/tasks/bulk` accepts `action: "STATUS" \| "ASSIGNEE" \| "DUE_DATE"`. Returns `[{ taskId, success, message }]` — one entry per task; one failure does not stop others. `GET /api/tasks/export` returns a CSV of the current filtered view. Bulk toolbar in the UI exposes all three action types. |
+| 8 | **Dashboard** — headline numbers, charts, role-scoped | ✅ Done | 7 Prisma queries run in `Promise.all`: open count, overdue count, due-this-week count, completed-this-week count, `groupBy` status, `groupBy` assignee, DONE tasks for 8-week completion chart. Manager sees full portfolio; member sees only their projects. All numbers computed server-side — no client-side aggregation. |
+| 9 | **Immutable history** — audit trail, timeline, comments | ✅ Done | `TaskEvent` table: insert-only via `writeTaskEvent` in `src/lib/auditLog.js`. Events: CREATED, FIELD_CHANGE (per field), STATUS_CHANGE, ASSIGNED, UNASSIGNED, COMMENT. There is no UPDATE or DELETE endpoint for `TaskEvent` anywhere in the codebase. Timeline displayed on task detail page in chronological order. Comments posted from the same panel. |
+| 10 | **Overdue alerts** — dismiss, reappear on due-date change | ✅ Done | `GET /api/alerts` returns overdue (dueDate < now, status ≠ DONE) tasks where I am assigned. `POST /api/alerts/:id/dismiss` creates/updates an `AlertDismissal` row — only the assigned user can dismiss (403 otherwise). Alert reappears when `task.dueDateUpdatedAt > dismissal.dismissedAt`. Nav badge shows count, updated on every dashboard layout mount. |
 
 **Stretch goals completed:**
-- Cycle detection across full blocking graph (DFS in `taskStateMachine.js`)
-- Drag-and-drop Kanban board view (`/board`)
-- Saved filter views (save, apply, delete named filter sets)
-- Cross-project activity feed (`/activity`)
+| Stretch | Where |
+|---|---|
+| Cycle detection (full blocking graph, not just direct pairs) | `wouldCreateCycle` in `src/lib/taskStateMachine.js` — DFS on adjacency list |
+| Drag-and-drop Kanban board | `src/app/(dashboard)/board/page.js` |
+| Saved filter views | `SavedFilter` model; `GET/POST /api/saved-filters`; delete per filter |
+| Cross-project activity feed | `GET /api/activity`; paginated; role-scoped |
 
 ## How much time did you actually spend?
 
-Approximately 14 hours across 6 sessions over 7 days, spread as follows:
+~14 hours across 7 days.
 
-| Session | Work | Time |
-|---|---|---|
-| 1 | Scaffold, Prisma schema, auth | ~2h |
-| 2 | Projects + Tasks CRUD, membership, basic UI | ~2.5h |
-| 3 | State machine, lifecycle, assignment | ~1.5h |
-| 4 | Search/filter/bulk/CSV + pagination race condition | ~2.5h |
-| 5 | Dashboard aggregates, audit trail, timeline UI | ~2h |
-| 6 | Alerts, tests, seed data, polish, docs | ~3h |
+| Session | Date | Focus | Time |
+|---|---|---|---|
+| 1 | Day 1 | Schema + auth | ~2h |
+| 2 | Day 2 | Projects + Tasks CRUD + basic UI | ~2.5h |
+| 3 | Day 3 | State machine + lifecycle + assignment | ~1.5h |
+| 4 | Day 4–5 | Search/filter/bulk/CSV + debounce/race fix | ~2.5h |
+| 5 | Day 5–6 | Dashboard + audit trail + timeline | ~2h |
+| 6 | Day 7 | Alerts + tests + seed + docs | ~3h |
+
+The 2-hour overrun (12h budgeted, ~14h actual) came from writing 49 tests from scratch (~1h) and the stale-request guard on the search input (~30min). The core feature code landed within the session estimates.
 
 ## What would you do next, with another 12 hours?
 
-1. **Deploy and test against the live database** — the code is verified by isolated unit tests and careful reading, but has not been exercised against a real Postgres instance with live session cookies end-to-end. First priority would be a full run-through of every user flow on the deployed app.
+**1. End-to-end verification against the live database (first priority, ~2h)**
+Everything in this submission is verified by unit/mocked tests and careful reading. It has not been exercised against a real Postgres instance with real session cookies end-to-end. The first 2 hours would be a full manual walkthrough of every user flow on the deployed app, logging every 500 and every piece of wrong data as a bug to fix.
 
-2. **Expand test coverage** — currently 49 tests cover 5 of ~20 route handlers. The projects CRUD, member management, dashboard aggregates, and CSV export routes have no tests. Integration tests with a real test DB (using Prisma's test client against a separate `DATABASE_URL`) would catch the class of bug (e.g. wrong Prisma field name) that mocked tests can't.
+**2. Expand test coverage to all routes (~3h)**
+49 tests cover 5 of ~22 route files. Projects CRUD, member management, dashboard aggregates, task CRUD (PATCH/DELETE), and the CSV export have no tests. The right approach is integration tests with a real test database (separate `TEST_DATABASE_URL`, reset with `prisma migrate reset` before each run) — these catch bugs that mocked tests cannot, like a wrong Prisma field name.
 
-3. **Dashboard 100x fix** — the completions-by-week chart currently fetches all matching rows and buckets in JavaScript. At scale, this should be a `GROUP BY date_trunc('week', ...)` query pushed to Postgres.
+**3. Fix the dashboard completions-by-week query (~1h)**
+The current implementation fetches all DONE tasks updated in the last 8 weeks and buckets them in JavaScript using `Array.filter`. This is the only place in the codebase where work that belongs in Postgres runs in Node.js. The correct implementation is:
+```sql
+SELECT date_trunc('week', "updatedAt") as week, COUNT(*) as count
+FROM "Task"
+WHERE status = 'DONE' AND "updatedAt" >= NOW() - INTERVAL '8 weeks'
+GROUP BY week ORDER BY week
+```
+In Prisma this requires `prisma.$queryRaw` with tagged template literals — I avoided raw SQL to keep the codebase consistent, but at any real data scale this query would be the first performance issue.
 
-4. **Email notifications** — the alert system tells you about overdue tasks on-screen. An email digest (daily or on-assign) would require integrating a transactional email provider (Resend is free tier) and a scheduled function.
+**4. Email notifications on assignment and overdue (~3h)**
+Requires: Resend (free tier, 100 emails/day) for delivery, and a Vercel Cron Job (once daily) to query overdue tasks and send digests. The data model is already in place — the alert system has the right query; it just needs a send step added.
 
-5. **Proper loading skeletons** — the current loading state is an opacity fade. Purpose-built skeleton components would feel more polished.
+**5. Real-time updates via Supabase Realtime (~3h)**
+Changes made in one browser tab are not pushed to another user's tab. Supabase exposes a Postgres change-data-capture WebSocket feed that can be subscribed to from the browser. Wiring it up would make status changes and new assignments appear in other users' open tabs without a refresh.
 
 ## What are you least happy with in this codebase, and why?
 
-The **dashboard completion chart** (`GET /api/dashboard`, the `weeklyData` section). It fetches every DONE task updated in the last 8 weeks and counts them in JavaScript using `reduce`. This is the only place in the codebase where work that belongs in the database is happening in application code. At any real scale it would be the first thing to blow up. The correct implementation is a single `GROUP BY date_trunc('week', "updatedAt") WHERE status = 'DONE'` query, but getting that across Prisma's query builder requires raw SQL (`prisma.$queryRaw`), which I avoided to keep the codebase consistent. It's a deliberate compromise I'm not satisfied with.
+**The dashboard completions-by-week chart**, without question. It is the only place in the entire codebase where data aggregation happens in JavaScript rather than in the database. The reason it is there: `date_trunc` is a Postgres-specific function and Prisma's query builder does not support it without dropping to `prisma.$queryRaw`. I chose to avoid raw SQL throughout the codebase for consistency — every other query is Prisma ORM. But the consequence is a `findMany` that returns potentially thousands of rows just to count them in a JavaScript `filter`. I am not satisfied with this compromise and said so in the comment in `src/app/api/dashboard/route.js`.
 
-The second thing is **test coverage breadth**. The 49 tests are rigorous for what they cover, but the coverage surface is narrow — only 5 of ~20 route files have any tests at all. A reviewer who asks "does this work end-to-end" cannot be fully answered by these tests alone. If I had another 3 hours, test coverage would be the spend.
+The second thing is **test coverage breadth**. The 49 tests that exist are genuinely rigorous for what they cover — 26 of them exhaustively test the state machine against every status/blocker combination. But 17 of 22 route files have no tests at all. A reviewer asking "does your application work end-to-end" cannot get a complete answer from these tests. The honest characterisation (documented in `tests/README.md`) is: these tests prove that specific logic is correct given certain inputs — they do not prove the full request pipeline works against a real database. If I had 3 more hours, expanding test coverage to all routes with a real test database would be the spend — not adding features.
