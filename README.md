@@ -185,4 +185,3 @@ We're telling you this now because it should change how carefully you document a
 The 10 goals stated in this brief are the cutoff. Meet all 10, solidly, and you have a complete submission.
 
 Stretch ideas are optional. They exist for candidates who finish the 10 with time left and want to keep building — they are never required, and they do not make up for a goal you didn't hit. Doing 8 goals well beats doing 10 goals badly. If time is short, finish fewer goals properly rather than leaving all ten half-done.
-# TAKE_HOME_BUZY

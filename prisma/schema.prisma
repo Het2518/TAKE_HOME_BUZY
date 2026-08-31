@@ -1,0 +1,177 @@
+// Prisma schema — single source of truth for the data model.
+// See docs/schema.md for the reasoning behind every relationship and constraint.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  MANAGER
+  MEMBER
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  BACKLOG
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+  BLOCKED
+}
+
+enum EventType {
+  CREATED
+  FIELD_CHANGE
+  ASSIGNED
+  UNASSIGNED
+  COMMENT
+  STATUS_CHANGE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(MEMBER)
+  createdAt    DateTime @default(now())
+
+  ownedProjects   Project[]        @relation("ProjectOwner")
+  memberships     ProjectMember[]
+  assignments     TaskAssignee[]
+  events          TaskEvent[]
+  dismissals      AlertDismissal[]
+  savedFilters    SavedFilter[]
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  key         String   @unique // short code e.g. "ACME"
+  name        String
+  description String   @default("")
+  archived    Boolean  @default(false)
+  ownerId     String
+  owner       User     @relation("ProjectOwner", fields: [ownerId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members ProjectMember[]
+  tasks   Task[]
+}
+
+// One-to-many: Project -> ProjectMember. Many-to-many Project <-> User realized through this join table.
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, userId])
+}
+
+model Task {
+  id                String     @id @default(cuid())
+  projectId         String
+  project           Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title             String
+  description       String     @default("")
+  priority          Priority   @default(MEDIUM)
+  status            TaskStatus @default(BACKLOG)
+  dueDate           DateTime?
+  dueDateUpdatedAt  DateTime?  // used to decide whether a dismissed alert should reappear
+  blockedFromStatus TaskStatus? // remembers what to return to when unblocked
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  assignees TaskAssignee[]
+  events    TaskEvent[]
+  dismissals AlertDismissal[]
+
+  // Self-referential many-to-many: a task can be blocked by many tasks, and can block many tasks.
+  blockedBy TaskBlocker[] @relation("BlockedTask")
+  blocks    TaskBlocker[] @relation("BlockingTask")
+
+  @@index([projectId, status])
+  @@index([dueDate])
+}
+
+// Many-to-many self-relation on Task: blockingTaskId must reach DONE before taskId can reach DONE.
+model TaskBlocker {
+  id             String @id @default(cuid())
+  taskId         String // the task that is blocked
+  blockingTaskId String // the task that must finish first
+
+  task         Task @relation("BlockedTask", fields: [taskId], references: [id], onDelete: Cascade)
+  blockingTask Task @relation("BlockingTask", fields: [blockingTaskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, blockingTaskId])
+}
+
+// Many-to-many: Task <-> User (a task has many assignees, a user has many tasks).
+model TaskAssignee {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([taskId, userId])
+}
+
+// Append-only audit trail. No route may ever UPDATE or DELETE a row here — see docs/schema.md.
+model TaskEvent {
+  id          String    @id @default(cuid())
+  taskId      String
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  type        EventType
+  field       String?
+  oldValue    String?
+  newValue    String?
+  commentText String?
+  createdAt   DateTime  @default(now())
+
+  @@index([taskId, createdAt])
+}
+
+// STRETCH GOAL: saved filter views. Stores a user's named filter/sort combination for the
+// All Tasks view so they don't have to rebuild it every time. filterJson mirrors exactly
+// the query params GET /api/tasks already accepts — deliberately reusing that shape so
+// applying a saved filter is just "spread these params into the existing search," no new
+// filter-matching logic needed.
+model SavedFilter {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  filterJson String  // JSON-encoded query params, e.g. {"status":"IN_PROGRESS","overdue":"true"}
+  createdAt DateTime @default(now())
+
+  @@unique([userId, name])
+}
+
+model AlertDismissal {
+  id          String   @id @default(cuid())
+  taskId      String
+  userId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dismissedAt DateTime @default(now())
+
+  @@unique([taskId, userId])
+}
