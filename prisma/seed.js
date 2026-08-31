@@ -8,23 +8,48 @@ const prisma = new PrismaClient();
 async function main() {
   const passwordHash = await bcrypt.hash("Password123!", 10);
 
-  const manager = await prisma.user.upsert({
-    where: { email: "manager@demo.com" },
-    update: {},
-    create: { email: "manager@demo.com", name: "Morgan Manager", role: "MANAGER", passwordHash },
-  });
+  const usersData = [
+    { email: "aarav@demo.com", name: "Aarav Sharma", role: "MANAGER" },
+    { email: "vihaan@demo.com", name: "Vihaan Patel", role: "MEMBER" },
+    { email: "aditya@demo.com", name: "Aditya Singh", role: "MEMBER" },
+    { email: "sai@demo.com", name: "Sai Kumar", role: "MEMBER" },
+    { email: "arjun@demo.com", name: "Arjun Reddy", role: "MANAGER" },
+    { email: "reyansh@demo.com", name: "Reyansh Gupta", role: "MEMBER" },
+    { email: "krishna@demo.com", name: "Krishna Iyer", role: "MEMBER" },
+    { email: "ishaan@demo.com", name: "Ishaan Verma", role: "MEMBER" },
+    { email: "ananya@demo.com", name: "Ananya Joshi", role: "MANAGER" },
+    { email: "diya@demo.com", name: "Diya Rao", role: "MEMBER" },
+    { email: "riya@demo.com", name: "Riya Nair", role: "MEMBER" },
+    { email: "aadhya@demo.com", name: "Aadhya Desai", role: "MEMBER" },
+    { email: "kavya@demo.com", name: "Kavya Menon", role: "MEMBER" },
+    { email: "neha@demo.com", name: "Neha Kapoor", role: "MEMBER" },
+    { email: "rohit@demo.com", name: "Rohit Mehra", role: "MANAGER" },
+    { email: "siddharth@demo.com", name: "Siddharth Bhat", role: "MEMBER" }
+  ];
 
-  const alice = await prisma.user.upsert({
-    where: { email: "alice@demo.com" },
-    update: {},
-    create: { email: "alice@demo.com", name: "Alice Member", role: "MEMBER", passwordHash },
-  });
+  const dbUsers = {};
+  for (const u of usersData) {
+    dbUsers[u.email] = await prisma.user.upsert({
+      where: { email: u.email },
+      update: {},
+      create: { ...u, passwordHash },
+    });
+  }
 
-  const bob = await prisma.user.upsert({
-    where: { email: "bob@demo.com" },
-    update: {},
-    create: { email: "bob@demo.com", name: "Bob Member", role: "MEMBER", passwordHash },
-  });
+  // Map former variables to the newly created users to keep the rest of the script easy to read
+  const manager = dbUsers["aarav@demo.com"];
+  const alice = dbUsers["vihaan@demo.com"];
+  const bob = dbUsers["aditya@demo.com"];
+
+  const project1Members = [
+    "aarav@demo.com", "vihaan@demo.com", "aditya@demo.com", "sai@demo.com",
+    "arjun@demo.com", "reyansh@demo.com", "krishna@demo.com", "ishaan@demo.com"
+  ];
+  
+  const project2Members = [
+    "ananya@demo.com", "diya@demo.com", "riya@demo.com", "aadhya@demo.com",
+    "rohit@demo.com", "kavya@demo.com", "neha@demo.com", "siddharth@demo.com"
+  ];
 
   const project = await prisma.project.upsert({
     where: { key: "ACME" },
@@ -35,7 +60,7 @@ async function main() {
       description: "Full redesign and rebuild of the Acme Corp marketing site.",
       ownerId: manager.id,
       members: {
-        create: [{ userId: manager.id }, { userId: alice.id }, { userId: bob.id }],
+        create: project1Members.map(email => ({ userId: dbUsers[email].id })),
       },
     },
   });
@@ -47,8 +72,10 @@ async function main() {
       key: "PORT",
       name: "Client Portal MVP",
       description: "Internal client-facing portal, phase 1.",
-      ownerId: manager.id,
-      members: { create: [{ userId: manager.id }, { userId: alice.id }] },
+      ownerId: dbUsers["ananya@demo.com"].id,
+      members: { 
+        create: project2Members.map(email => ({ userId: dbUsers[email].id })) 
+      },
     },
   });
 
@@ -77,7 +104,7 @@ async function main() {
       status: "IN_PROGRESS",
       dueDate: inDays(-2), // overdue on purpose, to populate alerts
       dueDateUpdatedAt: now,
-      assignees: { create: [{ userId: bob.id }] },
+      assignees: { create: [{ userId: bob.id }, { userId: dbUsers["sai@demo.com"].id }] },
       blockedBy: { create: [{ blockingTaskId: t1.id }] },
     },
   });
@@ -90,6 +117,7 @@ async function main() {
       status: "BACKLOG",
       dueDate: inDays(5),
       dueDateUpdatedAt: now,
+      assignees: { create: [{ userId: dbUsers["ishaan@demo.com"].id }] }
     },
   });
 
@@ -101,7 +129,7 @@ async function main() {
       status: "IN_REVIEW",
       dueDate: inDays(3),
       dueDateUpdatedAt: now,
-      assignees: { create: [{ userId: alice.id }, { userId: bob.id }] },
+      assignees: { create: [{ userId: alice.id }, { userId: bob.id }, { userId: dbUsers["arjun@demo.com"].id }] },
     },
   });
 
@@ -114,7 +142,7 @@ async function main() {
       blockedFromStatus: "IN_PROGRESS",
       dueDate: inDays(1),
       dueDateUpdatedAt: now,
-      assignees: { create: [{ userId: alice.id }] },
+      assignees: { create: [{ userId: dbUsers["diya@demo.com"].id }, { userId: dbUsers["riya@demo.com"].id }] },
     },
   });
 
@@ -137,8 +165,8 @@ async function main() {
   });
 
   console.log("Seed complete.");
-  console.log("Manager login: manager@demo.com / Password123!");
-  console.log("Member logins: alice@demo.com / bob@demo.com / Password123!");
+  console.log("Manager logins (e.g. aarav@demo.com, ananya@demo.com, arjun@demo.com) / Password123!");
+  console.log("Member logins (e.g. vihaan@demo.com, aditya@demo.com, diya@demo.com) / Password123!");
 }
 
 main()
