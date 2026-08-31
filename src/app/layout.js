@@ -1,4 +1,8 @@
 import "@/styles/globals.css";
+import { Inter } from "next/font/google";
+import { ToastProvider } from "@/components/Toast";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata = {
   title: "Project & Task Tracker",
@@ -7,7 +11,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <head>
         {/* Runs before paint, before React hydrates — reads the saved theme (or system
             preference) and sets it on <html> immediately, so there's no flash of the wrong
@@ -27,7 +31,9 @@ export default function RootLayout({ children }) {
           }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <ToastProvider>{children}</ToastProvider>
+      </body>
     </html>
   );
 }

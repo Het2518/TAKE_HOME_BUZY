@@ -1,10 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { Skeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/Toast";
 
 export default function ProjectsPage() {
   const { user } = useCurrentUser();
-  const [projects, setProjects] = useState([]);
+  const { addToast } = useToast();
+  const [projects, setProjects] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ key: "", name: "", description: "", ownerId: "" });
   const [error, setError] = useState("");
@@ -21,8 +24,6 @@ export default function ProjectsPage() {
     }
   }, [user]);
 
-  // Default the owner picker to yourself once your own id is known, without overriding
-  // a choice already made.
   useEffect(() => {
     if (user && !form.ownerId) setForm((f) => ({ ...f, ownerId: user.id }));
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -42,39 +43,57 @@ export default function ProjectsPage() {
     }
     setForm({ key: "", name: "", description: "", ownerId: user.id });
     setShowForm(false);
+    addToast("Project created", "success");
     load();
   }
 
-  async function toggleArchive(project) {
+  async function toggleArchive(e, project) {
+    e.preventDefault();
+    e.stopPropagation();
     await fetch(`/api/projects/${project.id}/archive`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ archived: !project.archived }),
     });
+    addToast(project.archived ? "Project restored" : "Project archived", "info");
     load();
   }
 
   return (
-    <div className="grid" style={{ gap: 16 }}>
+    <div className="grid container animate-fade-in" style={{ gap: 24 }}>
       <div className="flex-between">
-        <h1>Projects</h1>
+        <h1 style={{ margin: 0 }}>Projects</h1>
         {user?.role === "MANAGER" && (
-          <button onClick={() => setShowForm((s) => !s)}>{showForm ? "Cancel" : "New project"}</button>
+          <button className={showForm ? "ghost" : "primary"} onClick={() => setShowForm((s) => !s)}>
+            {showForm ? "Cancel" : "+ New project"}
+          </button>
         )}
       </div>
 
       {showForm && (
-        <form onSubmit={handleCreate} className="card grid" style={{ gap: 10, maxWidth: 480 }}>
-          <input placeholder="Key (e.g. ACME)" value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })} required />
-          <input placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          <textarea placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-          <label style={{ fontSize: 13, color: "var(--text-dim)" }}>
+        <form onSubmit={handleCreate} className="card grid animate-slide-down" style={{ gap: 16, maxWidth: 600 }}>
+          <h3 style={{ margin: 0 }}>Create a new project</h3>
+          <div className="grid" style={{ gridTemplateColumns: "120px 1fr", gap: 16 }}>
+            <label style={{ fontSize: 13, fontWeight: 500 }}>
+              Key (e.g. ACM)
+              <input value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value.toUpperCase() })} required maxLength={5} style={{ marginTop: 6 }} />
+            </label>
+            <label style={{ fontSize: 13, fontWeight: 500 }}>
+              Name
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required style={{ marginTop: 6 }} />
+            </label>
+          </div>
+          <label style={{ fontSize: 13, fontWeight: 500 }}>
+            Description
+            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} style={{ marginTop: 6 }} />
+          </label>
+          <label style={{ fontSize: 13, fontWeight: 500 }}>
             Owner
             <select
               value={form.ownerId}
               onChange={(e) => setForm({ ...form, ownerId: e.target.value })}
               required
-              style={{ width: "100%", marginTop: 4 }}
+              style={{ marginTop: 6 }}
             >
               {users.map((u) => (
                 <option key={u.id} value={u.id}>
@@ -83,40 +102,53 @@ export default function ProjectsPage() {
               ))}
             </select>
           </label>
-          {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
-          <button type="submit">Create</button>
+          {error && <p style={{ color: "var(--danger)", margin: 0, fontSize: 13 }}>{error}</p>}
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button type="submit" className="primary">Create Project</button>
+          </div>
         </form>
       )}
 
-      <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}>
-        {projects.map((p) => (
-          <a key={p.id} href={`/projects/${p.id}`} className="card" style={{ color: "inherit" }}>
-            <div className="flex-between">
-              <strong>{p.key}</strong>
-              {p.archived && <span className="badge">Archived</span>}
-            </div>
-            <h3 style={{ margin: "6px 0" }}>{p.name}</h3>
-            <p style={{ color: "var(--text-dim)", fontSize: 13 }}>{p.description}</p>
-            <div className="flex" style={{ fontSize: 12, color: "var(--text-dim)" }}>
-              <span>{p._count?.tasks ?? 0} tasks</span>
-              <span>·</span>
-              <span>{p._count?.members ?? 0} members</span>
-            </div>
-            {user?.role === "MANAGER" && (
-              <button
-                className="secondary"
-                style={{ marginTop: 10 }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  toggleArchive(p);
-                }}
-              >
-                {p.archived ? "Restore" : "Archive"}
-              </button>
-            )}
-          </a>
-        ))}
-      </div>
+      {!projects ? (
+        <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 24 }}>
+          {[1, 2, 3].map(i => <Skeleton key={i} height="160px" className="card" />)}
+        </div>
+      ) : (
+        <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 24 }}>
+          {projects.map((p, i) => (
+            <a key={p.id} href={`/projects/${p.id}`} className="card animate-slide-up" style={{ color: "inherit", animationDelay: `${i * 50}ms`, display: "flex", flexDirection: "column", height: "100%" }}>
+              <div className="flex-between" style={{ alignItems: "flex-start", marginBottom: 12 }}>
+                <span className="badge" style={{ background: "var(--panel-hover)", border: "none" }}>{p.key}</span>
+                {p.archived && <span className="badge BACKLOG">Archived</span>}
+              </div>
+              <h3 style={{ margin: "0 0 8px" }}>{p.name}</h3>
+              <p style={{ color: "var(--text-dim)", fontSize: 14, margin: "0 0 16px", flex: 1 }}>{p.description || "No description."}</p>
+              
+              <div className="flex-between" style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
+                <div className="flex" style={{ gap: 16 }}>
+                  <div className="flex" style={{ gap: 4, color: "var(--text-dim)", fontSize: 13 }}>
+                    <span>📋</span> {p._count?.tasks ?? 0}
+                  </div>
+                  <div className="flex" style={{ gap: 4, color: "var(--text-dim)", fontSize: 13 }}>
+                    <span>👥</span> {p._count?.members ?? 0}
+                  </div>
+                </div>
+                
+                {user?.role === "MANAGER" && (
+                  <button
+                    className="ghost"
+                    style={{ padding: "4px 8px", fontSize: 12 }}
+                    onClick={(e) => toggleArchive(e, p)}
+                  >
+                    {p.archived ? "Restore" : "Archive"}
+                  </button>
+                )}
+              </div>
+            </a>
+          ))}
+          {projects.length === 0 && <p style={{ color: "var(--text-dim)" }}>No projects found.</p>}
+        </div>
+      )}
     </div>
   );
 }
