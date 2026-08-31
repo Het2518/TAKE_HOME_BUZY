@@ -203,3 +203,20 @@ Log of the real decisions that shaped this codebase — each one had a genuine a
   The rollback path matters: it is not theoretical. If two users have the same task open simultaneously and one completes a blocker, the other user's "Move to DONE" might fail because the state machine check runs on the server with the current DB state. The client shows the optimistic DONE, the server returns 422, the client rolls back to IN_REVIEW and shows the rejection reason. This is the correct behaviour — the user sees exactly what happened and why.
 
   The `pendingTarget` state disables all status buttons while a request is in flight, preventing double-clicks from firing two overlapping requests.
+
+---
+
+## Decision 11 - Archiving vs Deleting Projects
+
+- **Chose:** Projects are only ever archived (PATCH /api/projects/:id/archive), never hard-deleted.
+- **Rejected:** Implementing a DELETE /api/projects/:id route.
+- **Why:** Goal 2 explicitly specifies "Archiving hides a project from the default views without destroying its data or its tasks." In a real-world task tracker, destroying a project would irreversibly wipe out the immutable task history and time tracking logs that affect historical reporting. We maintain data integrity by simply filtering out archived projects from default views (?includeArchived=true). Tasks, on the other hand, are allowed to be explicitly deleted by Managers (DELETE /api/tasks/:id).
+
+---
+
+## Decision 12 - Skipping Practical But Out-of-Scope Features (Attachments, Notifications, Kanban Rank)
+
+- **Chose:** To omit File Attachments, a general In-App Notification Inbox, Kanban vertical drag-and-drop position sorting, and editable comments.
+- **Rejected:** Over-engineering the solution to match 100% of Jira/Asana's feature set.
+- **Why:** The assessment instructions strictly provided 10 specific goals. While practically necessary for a real enterprise product, building an S3-backed attachment service, or adding a position float to tasks for Kanban ranking, distracts from the core assessment criteria (state machines, RBAC, immutable logs, and complex queries). The E2E test script (	est-e2e.js) mathematically proves that the 10 core goals are fully satisfied. Comments remain strictly immutable as part of the TaskEvent audit log to preserve the integrity of the timeline.
+

@@ -173,3 +173,33 @@ A complete `prisma/seed.js` with 16 users (Aarav, Ananya, Arjun, Priya, Vihaan, 
 
 ### What I corrected
 The initial seed script used `create` instead of `upsert`. Running `npx prisma db seed` twice would fail with unique constraint violations on `email`. Changed to `prisma.user.upsert({ where: { email }, create: {...}, update: {} })` for all users and `prisma.project.upsert({ where: { key }, create: {...}, update: {} })` for projects. Tasks use `createMany` with `skipDuplicates: true`.
+
+---
+
+## 12 - E2E Test Script for All 10 Goals
+
+### Prompt
+> "Create a comprehensive E2E test script to verify all 10 project goals. The script should test all API endpoints in depth to ensure all requirements and constraints are met in a realistic scenario."
+
+### What I got
+A complete node.js script (	est-e2e.js) that tests all 10 goals programmatically by making real HTTP calls to the local server. It successfully created active user sessions, enforced role rules, created tasks with dependencies, asserted state machine logic, verified server-side filtering, tested bulk actions, dashboard endpoints, fetched the immutable history log, and tested overdue task alerts and dismissals.
+
+### What I corrected
+Fixed a few schema payload mismatches in the E2E script itself. The createTaskSchema intentionally doesn't accept an array of ssigneeIds directly, so I had to update the script to use the specific POST /api/tasks/[taskId]/assignees endpoint as intended by the API design. I also fixed a bug in the E2E test where I called /history instead of /timeline.
+
+---
+
+## 13 - Practical and Realistic API Analysis
+
+### Prompt
+> "Scan the entire application to confirm that everything is working correctly and all APIs are utilized. Thinking practically and realistically, determine if there is a need to build any other APIs for this project."
+
+### What I got
+I received an analysis of the existing endpoints verifying that 100% of the 10 goals were met without leftover unused APIs. From a "practical" real-world standpoint, I suggested that the app is primarily missing:
+1. **In-App Notifications** (General notifications beyond just overdue alerts)
+2. **Attachments API** (S3 bucket uploads for images/PDFs on tasks)
+3. **Kanban Ordering** (Saving exact vertical drag-and-drop position)
+4. **Editable Comments** (Separating comments from the immutable audit log so users can fix typos)
+
+### What I corrected
+Nothing to correct. I documented these missing practical elements in docs/decisions.md as conscious omissions meant to keep the take-home assessment strictly focused on the required constraints.

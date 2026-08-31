@@ -4,6 +4,70 @@
 
 This is a **single Next.js 14 application** — there is no separate backend server, no API gateway, no separate frontend repository. The browser, the API, and the build toolchain are all in one codebase. Here is the full picture:
 
+```mermaid
+flowchart TB
+    subgraph Client [Browser - React Client Components]
+        UserAction[User Interaction \n e.g. 'Change Task Status']
+        State[React State \n Optimistic UI Update]
+        Fetch[Native fetch() API]
+
+        UserAction --> State
+        State --> Fetch
+    end
+
+    subgraph Middleware [Security & Validation Pipeline]
+        withErrorHandling{withErrorHandling \n Global Try/Catch}
+        requireAuth{requireAuth \n Parse JWT HttpOnly Cookie}
+        requireAccess{requireRole / requireProjectAccess \n DB Membership Check}
+        Zod{Zod Validation \n safeParse request body}
+
+        Fetch -- "HTTP Request (JSON)" --> withErrorHandling
+        withErrorHandling --> requireAuth
+        requireAuth -- "Missing/Expired" --> HTTP401[401 Unauthorized]
+        requireAuth -- "Valid" --> requireAccess
+        requireAccess -- "Denied" --> HTTP403[403 Forbidden]
+        requireAccess -- "Allowed" --> Zod
+        Zod -- "Schema Error" --> HTTP400[400 Bad Request]
+    end
+
+    subgraph BusinessLogic [Core Application Logic]
+        StateMachine{Business Rules \n Validate State Transitions \n Check Blockers}
+        Prisma[Prisma ORM \n DB Operations]
+        Audit[writeTaskEvent \n Immutable Audit Log]
+
+        Zod -- "Valid Data" --> StateMachine
+        StateMachine -- "Constraint Violation" --> HTTP422[422 Unprocessable]
+        StateMachine -- "Valid Transition" --> Prisma
+        Prisma --> Audit
+    end
+
+    subgraph Database [Database Layer]
+        DB[(PostgreSQL)]
+        Prisma <--> DB
+    end
+
+    Audit -- "Return Updated Data" --> Response[NextResponse.json]
+    Response -- "HTTP 200 OK" --> Fetch
+    Fetch -- "Sync Real Data" --> State
+
+    HTTP401 --> Fetch
+    HTTP403 --> Fetch
+    HTTP400 --> Fetch
+    HTTP422 --> Fetch
+
+    classDef client fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#fff;
+    classDef middleware fill:#3f3f46,stroke:#f59e0b,stroke-width:2px,color:#fff;
+    classDef logic fill:#14532d,stroke:#10b981,stroke-width:2px,color:#fff;
+    classDef db fill:#4c1d95,stroke:#8b5cf6,stroke-width:2px,color:#fff;
+    classDef error fill:#7f1d1d,stroke:#ef4444,stroke-width:2px,color:#fff;
+
+    class Client,UserAction,State,Fetch client;
+    class Middleware,withErrorHandling,requireAuth,requireAccess,Zod middleware;
+    class BusinessLogic,StateMachine,Prisma,Audit logic;
+    class Database,DB db;
+    class HTTP401,HTTP403,HTTP400,HTTP422 error;
+```
+
 ---
 
 ### 1. Browser layer (React client components)
