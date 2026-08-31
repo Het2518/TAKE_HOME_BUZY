@@ -59,7 +59,11 @@ export default function LoginPage() {
           </button>
         </form>
         <p style={{ marginTop: 12, fontSize: 13, color: "var(--text-dim)" }}>
-          Demo: manager@demo.com / alice@demo.com / bob@demo.com — password: Password123!
+          Demo managers: aarav@demo.com · ananya@demo.com · arjun@demo.com
+          <br />
+          Demo members: vihaan@demo.com · diya@demo.com · aditya@demo.com
+          <br />
+          Password for all: <strong>Password123!</strong>
         </p>
         <p style={{ marginTop: 8, fontSize: 13 }}>
           No account? <a href="/signup">Sign up</a>

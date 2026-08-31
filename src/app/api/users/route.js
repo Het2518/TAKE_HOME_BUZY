@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth, requireRole, withErrorHandling } from "@/lib/permissions";
+import { requireAuth, withErrorHandling } from "@/lib/permissions";
 
-// GET /api/users — managers only, used to populate the owner picker on project creation
-// and could back a future member-picker dropdown too. Never returns passwordHash.
+// GET /api/users — all authenticated users may list users (no passwordHash ever returned).
+// Originally restricted to managers only, but members also need this to populate the
+// assignee filter on the All Tasks page (goal 6) and member-picker dropdowns.
 export const GET = withErrorHandling(async () => {
-  const session = requireAuth();
-  requireRole(session, "MANAGER");
+  requireAuth();
 
   const users = await prisma.user.findMany({
     select: { id: true, name: true, email: true, role: true },

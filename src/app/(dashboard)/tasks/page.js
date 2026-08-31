@@ -9,17 +9,31 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const [searchInput, setSearchInput] = useState(""); // what the user is typing, right now
-  const [filters, setFilters] = useState({ search: "", status: "", priority: "", overdue: false, sortBy: "updatedAt", sortDir: "desc" });
+  const [filters, setFilters] = useState({
+    search: "", projectId: "", status: "", assigneeId: "", priority: "",
+    overdue: false, sortBy: "updatedAt", sortDir: "desc",
+  });
   const [selected, setSelected] = useState(new Set());
+  const [bulkAction, setBulkAction] = useState("STATUS");
   const [bulkStatus, setBulkStatus] = useState("");
+  const [bulkAssigneeId, setBulkAssigneeId] = useState("");
+  const [bulkDueDate, setBulkDueDate] = useState("");
   const [bulkResults, setBulkResults] = useState(null);
   const [savedFilters, setSavedFilters] = useState([]);
   const [newFilterName, setNewFilterName] = useState("");
+  const [projects, setProjects] = useState([]);
+  const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isApplyingBulk, setIsApplyingBulk] = useState(false);
   const [isSavingFilter, setIsSavingFilter] = useState(false);
   const debounceRef = useRef(null);
   const requestIdRef = useRef(0); // guards against an in-flight older request overwriting a newer result
+
+  // Load reference data for filter dropdowns (projects + users)
+  useEffect(() => {
+    fetch("/api/projects").then((r) => r.json()).then(setProjects).catch(() => {});
+    fetch("/api/users").then((r) => r.json()).then(setUsers).catch(() => {});
+  }, []);
 
   function loadSavedFilters() {
     fetch("/api/saved-filters").then((r) => r.json()).then(setSavedFilters);
@@ -28,9 +42,7 @@ export default function TasksPage() {
 
   // Debounce: typing in the search box updates `searchInput` instantly (so the input feels
   // responsive), but only pushes into `filters` — which triggers the actual network request —
-  // after the user pauses typing for SEARCH_DEBOUNCE_MS. This is the fix for "every keystroke
-  // fires a full request": previously `filters.search` (and therefore the effect below) updated
-  // on every keystroke.
+  // after the user pauses typing for SEARCH_DEBOUNCE_MS.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -66,7 +78,9 @@ export default function TasksPage() {
   const buildQuery = useCallback((page = 1) => {
     const params = new URLSearchParams();
     if (filters.search) params.set("search", filters.search);
+    if (filters.projectId) params.set("projectId", filters.projectId);
     if (filters.status) params.set("status", filters.status);
+    if (filters.assigneeId) params.set("assigneeId", filters.assigneeId);
     if (filters.priority) params.set("priority", filters.priority);
     if (filters.overdue) params.set("overdue", "true");
     params.set("sortBy", filters.sortBy);
@@ -82,8 +96,7 @@ export default function TasksPage() {
     fetch(`/api/tasks?${buildQuery(page)}`)
       .then((r) => r.json())
       .then((d) => {
-        // If a newer request has started since this one fired, discard this stale response
-        // instead of letting it clobber more recent results (can happen if two requests race).
+        // If a newer request has started since this one fired, discard stale response.
         if (thisRequestId !== requestIdRef.current) return;
         setTasks(d.tasks || []);
         setPagination(d.pagination || { page: 1, totalPages: 1, total: 0 });
@@ -103,13 +116,33 @@ export default function TasksPage() {
     });
   }
 
-  async function applyBulkStatus() {
-    if (!bulkStatus || selected.size === 0) return;
+  function toggleSelectAll() {
+    if (selected.size === tasks.length && tasks.length > 0) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(tasks.map((t) => t.id)));
+    }
+  }
+
+  async function applyBulk() {
+    if (selected.size === 0) return;
+    let action, value;
+    if (bulkAction === "STATUS") {
+      if (!bulkStatus) return;
+      action = "STATUS"; value = bulkStatus;
+    } else if (bulkAction === "ASSIGNEE") {
+      if (!bulkAssigneeId) return;
+      action = "ASSIGNEE"; value = bulkAssigneeId;
+    } else if (bulkAction === "DUE_DATE") {
+      if (!bulkDueDate) return;
+      action = "DUE_DATE"; value = new Date(bulkDueDate).toISOString();
+    } else return;
+
     setIsApplyingBulk(true);
     const res = await fetch("/api/tasks/bulk", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ taskIds: Array.from(selected), action: "STATUS", value: bulkStatus }),
+      body: JSON.stringify({ taskIds: Array.from(selected), action, value }),
     });
     const data = await res.json();
     setIsApplyingBulk(false);
@@ -122,6 +155,8 @@ export default function TasksPage() {
     window.open(`/api/tasks/export?${buildQuery()}`, "_blank");
   }
 
+  const allSelected = tasks.length > 0 && selected.size === tasks.length;
+
   return (
     <div className="grid" style={{ gap: 16 }}>
       <div className="flex-between">
@@ -129,15 +164,24 @@ export default function TasksPage() {
         <button onClick={exportCsv}>Export CSV</button>
       </div>
 
+      {/* ── Filters ── */}
       <div className="card flex" style={{ flexWrap: "wrap" }}>
         <input
           placeholder="Search title/description"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
         />
+        <select value={filters.projectId} onChange={(e) => setFilters({ ...filters, projectId: e.target.value })}>
+          <option value="">All projects</option>
+          {projects.map((p) => <option key={p.id} value={p.id}>{p.key} — {p.name}</option>)}
+        </select>
         <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
           <option value="">All statuses</option>
           {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select value={filters.assigneeId} onChange={(e) => setFilters({ ...filters, assigneeId: e.target.value })}>
+          <option value="">All assignees</option>
+          {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
         </select>
         <select value={filters.priority} onChange={(e) => setFilters({ ...filters, priority: e.target.value })}>
           <option value="">All priorities</option>
@@ -159,6 +203,7 @@ export default function TasksPage() {
         {isLoading && <span className="spinner" aria-label="Loading" />}
       </div>
 
+      {/* ── Saved filter views ── */}
       <div className="card flex" style={{ flexWrap: "wrap" }}>
         <span style={{ fontSize: 13, color: "var(--text-dim)" }}>Saved views:</span>
         {savedFilters.map((f) => (
@@ -190,15 +235,41 @@ export default function TasksPage() {
         </button>
       </div>
 
+      {/* ── Bulk action toolbar — appears when rows are selected ── */}
       {selected.size > 0 && (
         <div className="card flex-between" style={{ background: "var(--panel-highlight)" }}>
           <span>{selected.size} selected</span>
-          <div className="flex">
-            <select value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)}>
-              <option value="">Move to status...</option>
-              {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+          <div className="flex" style={{ flexWrap: "wrap", gap: 8 }}>
+            {/* Action type switcher */}
+            <select value={bulkAction} onChange={(e) => setBulkAction(e.target.value)}>
+              <option value="STATUS">Change status</option>
+              <option value="ASSIGNEE">Assign user</option>
+              <option value="DUE_DATE">Set due date</option>
             </select>
-            <button onClick={applyBulkStatus} disabled={isApplyingBulk || !bulkStatus}>
+
+            {/* Context-sensitive value picker — goal 7 requires all three actions */}
+            {bulkAction === "STATUS" && (
+              <select value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)}>
+                <option value="">Move to status...</option>
+                {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            )}
+            {bulkAction === "ASSIGNEE" && (
+              <select value={bulkAssigneeId} onChange={(e) => setBulkAssigneeId(e.target.value)}>
+                <option value="">Pick assignee...</option>
+                {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+            )}
+            {bulkAction === "DUE_DATE" && (
+              <input
+                type="date"
+                value={bulkDueDate}
+                onChange={(e) => setBulkDueDate(e.target.value)}
+                style={{ padding: "4px 8px" }}
+              />
+            )}
+
+            <button onClick={applyBulk} disabled={isApplyingBulk}>
               {isApplyingBulk ? "Applying…" : "Apply"}
             </button>
             <button className="secondary" onClick={() => setSelected(new Set())}>Clear</button>
@@ -206,6 +277,7 @@ export default function TasksPage() {
         </div>
       )}
 
+      {/* ── Per-task bulk results ── */}
       {bulkResults && (
         <div className="card">
           <div className="flex-between">
@@ -222,11 +294,21 @@ export default function TasksPage() {
         </div>
       )}
 
+      {/* ── Task table ── */}
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <table>
           <thead>
             <tr>
-              <th></th><th>Title</th><th>Project</th><th>Status</th><th>Priority</th><th>Due</th><th>Assignees</th>
+              <th>
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleSelectAll}
+                  title="Select all on this page"
+                />
+              </th>
+              <th>Title</th><th>Project</th><th>Status</th>
+              <th>Priority</th><th>Due</th><th>Assignees</th>
             </tr>
           </thead>
           <tbody style={{ opacity: isLoading ? 0.5 : 1, transition: "opacity 120ms ease" }}>
@@ -248,6 +330,7 @@ export default function TasksPage() {
         </table>
       </div>
 
+      {/* ── Pagination ── */}
       <div className="flex-between">
         <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
           {pagination.total} total matches — page {pagination.page} of {pagination.totalPages || 1}
