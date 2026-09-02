@@ -4,7 +4,7 @@ import { requireAuth, requireProjectAccess, withErrorHandling, HttpError } from 
 
 // GET /api/tasks/:id/timeline — full immutable history for goal 9.
 export const GET = withErrorHandling(async (_req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const task = await prisma.task.findUnique({ where: { id: params.taskId } });
   if (!task) throw new HttpError(404, "Task not found");
   await requireProjectAccess(session, task.projectId);
@@ -17,3 +17,4 @@ export const GET = withErrorHandling(async (_req, { params }) => {
 
   return NextResponse.json(events);
 });
+

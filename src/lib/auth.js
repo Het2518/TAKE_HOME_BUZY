@@ -32,8 +32,10 @@ export function verifyToken(token) {
   }
 }
 
-export function setSessionCookie(token) {
-  cookies().set(COOKIE_NAME, token, {
+// Next.js 15: cookies() is now async — must be awaited.
+export async function setSessionCookie(token) {
+  const store = await cookies();
+  store.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -42,14 +44,16 @@ export function setSessionCookie(token) {
   });
 }
 
-export function clearSessionCookie() {
-  cookies().set(COOKIE_NAME, "", { path: "/", maxAge: 0 });
+export async function clearSessionCookie() {
+  const store = await cookies();
+  store.set(COOKIE_NAME, "", { path: "/", maxAge: 0 });
 }
 
 // Reads and verifies the JWT from the httpOnly cookie. Returns { userId, role } or null.
 // This is the ONLY source of truth for "who is asking" — never trust a client-sent user id/role.
-export function getSessionFromCookies() {
-  const token = cookies().get(COOKIE_NAME)?.value;
+export async function getSessionFromCookies() {
+  const store = await cookies();
+  const token = store.get(COOKIE_NAME)?.value;
   if (!token) return null;
   return verifyToken(token);
 }

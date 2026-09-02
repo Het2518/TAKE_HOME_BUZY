@@ -5,7 +5,7 @@ import { verifyPassword, hashPassword } from "@/lib/auth";
 import { updateMeSchema } from "@/lib/validators";
 
 export const GET = withErrorHandling(async () => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
     select: { id: true, email: true, name: true, role: true },
@@ -17,7 +17,7 @@ export const GET = withErrorHandling(async () => {
 // Changing the password requires sending the current one first so a stolen session
 // token alone isn't enough to lock a user out of their own account.
 export const PATCH = withErrorHandling(async (req) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const body = await req.json();
   const parsed = updateMeSchema.safeParse(body);
   if (!parsed.success) throw new HttpError(400, parsed.error.issues[0].message);
@@ -43,4 +43,6 @@ export const PATCH = withErrorHandling(async (req) => {
   });
   return NextResponse.json(updated);
 });
+
+
 

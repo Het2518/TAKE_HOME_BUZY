@@ -4,7 +4,7 @@ import { requireAuth, requireRole, withErrorHandling, HttpError } from "@/lib/pe
 
 // GET /api/projects/:id/fields — list custom field definitions for a project
 export const GET = withErrorHandling(async (_req, { params }) => {
-  requireAuth();
+  await requireAuth();
   const fields = await prisma.customFieldDefinition.findMany({
     where: { projectId: params.projectId },
     orderBy: { createdAt: "asc" },
@@ -14,7 +14,7 @@ export const GET = withErrorHandling(async (_req, { params }) => {
 
 // POST /api/projects/:id/fields — create a custom field (manager only)
 export const POST = withErrorHandling(async (req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   requireRole(session, "MANAGER");
 
   const { name, type, options } = await req.json();
@@ -35,3 +35,4 @@ export const POST = withErrorHandling(async (req, { params }) => {
   });
   return NextResponse.json(field, { status: 201 });
 });
+

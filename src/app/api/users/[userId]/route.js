@@ -11,7 +11,7 @@ const updateUserSchema = z.object({
 // GET /api/users/:id — any authenticated user can view a public profile.
 // passwordHash is never included — the select list is the guard.
 export const GET = withErrorHandling(async (_req, { params }) => {
-  requireAuth();
+  await requireAuth();
   const user = await prisma.user.findUnique({
     where: { id: params.userId },
     select: { id: true, name: true, email: true, role: true, createdAt: true },
@@ -24,7 +24,7 @@ export const GET = withErrorHandling(async (_req, { params }) => {
 // without having to reseed the database. Password resets are not here — the user
 // must use PATCH /api/auth/me with their current password.
 export const PATCH = withErrorHandling(async (req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   requireRole(session, "MANAGER");
 
   const body = await req.json();
@@ -38,3 +38,4 @@ export const PATCH = withErrorHandling(async (req, { params }) => {
   });
   return NextResponse.json(updated);
 });
+

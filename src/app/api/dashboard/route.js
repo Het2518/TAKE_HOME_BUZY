@@ -12,7 +12,7 @@ function startOfWeek(d) {
 
 // GET /api/dashboard — all numbers computed server-side via aggregate queries (goal 8).
 export const GET = withErrorHandling(async () => {
-  const session = requireAuth();
+  const session = await requireAuth();
 
   const visibleProjectFilter =
     session.role === "MANAGER" ? {} : { members: { some: { userId: session.userId } } };
@@ -88,3 +88,5 @@ export const GET = withErrorHandling(async () => {
     completionsByWeek,
   });
 });
+
+

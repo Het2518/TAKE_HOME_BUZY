@@ -5,7 +5,7 @@ import { writeTaskEvent } from "@/lib/auditLog";
 
 // POST /api/projects/:id/members  body: { userId }  — managers only (goal 1)
 export const POST = withErrorHandling(async (req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   requireRole(session, "MANAGER");
 
   const { userId } = await req.json();
@@ -26,7 +26,7 @@ export const POST = withErrorHandling(async (req, { params }) => {
 // DELETE /api/projects/:id/members?userId=...
 // Removing someone from a project unassigns them from that project's tasks (goal 5).
 export const DELETE = withErrorHandling(async (req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   requireRole(session, "MANAGER");
 
   const { searchParams } = new URL(req.url);
@@ -58,3 +58,4 @@ export const DELETE = withErrorHandling(async (req, { params }) => {
 
   return NextResponse.json({ ok: true });
 });
+

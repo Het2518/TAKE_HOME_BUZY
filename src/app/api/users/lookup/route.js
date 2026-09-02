@@ -5,7 +5,7 @@ import { requireAuth, requireRole, withErrorHandling, HttpError } from "@/lib/pe
 // GET /api/users/lookup?email=... — managers only, used to resolve an email to a user id
 // when adding a project member. Deliberately returns only id/name/email, never passwordHash.
 export const GET = withErrorHandling(async (req) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   requireRole(session, "MANAGER");
 
   const { searchParams } = new URL(req.url);
@@ -20,3 +20,5 @@ export const GET = withErrorHandling(async (req) => {
 
   return NextResponse.json(user);
 });
+
+

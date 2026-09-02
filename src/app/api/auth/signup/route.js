@@ -24,7 +24,7 @@ export const POST = withErrorHandling(async (req) => {
   });
 
   const token = signToken({ userId: user.id, role: user.role });
-  setSessionCookie(token);
+  await setSessionCookie(token);
 
   return NextResponse.json({ id: user.id, email: user.email, name: user.name, role: user.role });
 });

@@ -8,7 +8,7 @@ import { requireAuth, withErrorHandling } from "@/lib/permissions";
 // table for the core feed (SavedFilter/board reuse existing endpoints too — see docs/decisions.md
 // for why "reuse the audit log" was chosen over building a separate activity-tracking system).
 export const GET = withErrorHandling(async (req) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
   const pageSize = 30;
@@ -36,3 +36,5 @@ export const GET = withErrorHandling(async (req) => {
 
   return NextResponse.json({ events, pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) } });
 });
+
+

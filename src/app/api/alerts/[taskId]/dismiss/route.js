@@ -6,7 +6,7 @@ import { requireAuth, withErrorHandling, HttpError } from "@/lib/permissions";
 // A user may only dismiss an alert for a task THEY are assigned to (goal 10) —
 // enforced here, not just by hiding the dismiss button for other people's tasks.
 export const POST = withErrorHandling(async (_req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
 
   const assignment = await prisma.taskAssignee.findUnique({
     where: { taskId_userId: { taskId: params.taskId, userId: session.userId } },
@@ -21,3 +21,4 @@ export const POST = withErrorHandling(async (_req, { params }) => {
 
   return NextResponse.json(dismissal);
 });
+

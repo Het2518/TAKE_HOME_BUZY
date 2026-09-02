@@ -4,7 +4,7 @@ import { requireAuth, requireRole, withErrorHandling, HttpError } from "@/lib/pe
 
 // DELETE /api/projects/:id/fields/:fieldId — remove a custom field + all its values
 export const DELETE = withErrorHandling(async (_req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   requireRole(session, "MANAGER");
 
   const field = await prisma.customFieldDefinition.findUnique({ where: { id: params.fieldId } });
@@ -14,3 +14,4 @@ export const DELETE = withErrorHandling(async (_req, { params }) => {
   await prisma.customFieldDefinition.delete({ where: { id: params.fieldId } });
   return NextResponse.json({ ok: true });
 });
+

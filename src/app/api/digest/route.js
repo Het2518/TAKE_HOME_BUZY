@@ -45,7 +45,7 @@ function buildDigestHtml(user, tasks) {
 
 // GET /api/digest — returns the digest data (for preview in the browser)
 export const GET = withErrorHandling(async () => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
     select: { id: true, name: true, email: true },
@@ -74,7 +74,7 @@ export const GET = withErrorHandling(async () => {
 //   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
 // For Gmail: SMTP_HOST=smtp.gmail.com SMTP_PORT=587 SMTP_USER=your@gmail.com SMTP_PASS=<app-password>
 export const POST = withErrorHandling(async () => {
-  const session = requireAuth();
+  const session = await requireAuth();
 
   // Check SMTP config exists
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env;
@@ -124,3 +124,5 @@ export const POST = withErrorHandling(async () => {
 
   return NextResponse.json({ ok: true, sent: true, to: user.email, taskCount: tasks.length });
 });
+
+

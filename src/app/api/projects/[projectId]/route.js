@@ -10,7 +10,7 @@ import {
 import { updateProjectSchema } from "@/lib/validators";
 
 export const GET = withErrorHandling(async (_req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   await requireProjectAccess(session, params.projectId);
 
   const project = await prisma.project.findUnique({
@@ -26,7 +26,7 @@ export const GET = withErrorHandling(async (_req, { params }) => {
 
 // PATCH — edit project fields. Managers only.
 export const PATCH = withErrorHandling(async (req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   requireRole(session, "MANAGER");
   await requireProjectAccess(session, params.projectId);
 
@@ -43,3 +43,4 @@ export const PATCH = withErrorHandling(async (req, { params }) => {
 
 // DELETE is not supported — projects are archived, never destroyed. See goal 2 / docs/decisions.md.
 // PATCH .../archive and .../restore below handle the archive toggle instead.
+

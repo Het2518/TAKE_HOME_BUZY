@@ -9,7 +9,7 @@ import { wouldCreateCycle } from "@/lib/taskStateMachine";
 // Every bit of this happens in the database query, never by loading everything and
 // filtering in the browser — see docs/decisions.md.
 export const GET = withErrorHandling(async (req) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const { searchParams } = new URL(req.url);
 
   const search = searchParams.get("search") || "";
@@ -82,7 +82,7 @@ export const GET = withErrorHandling(async (req) => {
 
 // POST /api/tasks — create a task. Any project member may create (goal 3).
 export const POST = withErrorHandling(async (req) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const body = await req.json();
   const parsed = createTaskSchema.safeParse(body);
   if (!parsed.success) throw new HttpError(400, parsed.error.issues[0].message);
@@ -127,3 +127,5 @@ export const POST = withErrorHandling(async (req) => {
 
   return NextResponse.json(task, { status: 201 });
 });
+
+

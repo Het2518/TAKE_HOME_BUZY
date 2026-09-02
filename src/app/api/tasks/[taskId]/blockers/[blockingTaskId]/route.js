@@ -9,7 +9,7 @@ import { writeTaskEvent } from "@/lib/auditLog";
 // This is more natural in the URL ("remove task X from the blockers of task Y") and
 // avoids exposing internal join-table row ids to the client.
 export const DELETE = withErrorHandling(async (_req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const task = await prisma.task.findUnique({ where: { id: params.taskId } });
   if (!task) throw new HttpError(404, "Task not found");
   await requireProjectAccess(session, task.projectId);
@@ -44,3 +44,4 @@ export const DELETE = withErrorHandling(async (_req, { params }) => {
 
   return NextResponse.json({ ok: true });
 });
+

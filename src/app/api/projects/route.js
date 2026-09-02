@@ -10,7 +10,7 @@ import { createProjectSchema } from "@/lib/validators";
 // per goal 1 — that restriction is stated specifically for members, by contrast.
 // Archived projects are excluded unless ?includeArchived=true.
 export const GET = withErrorHandling(async (req) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const { searchParams } = new URL(req.url);
   const includeArchived = searchParams.get("includeArchived") === "true";
 
@@ -33,7 +33,7 @@ export const GET = withErrorHandling(async (req) => {
 
 // POST /api/projects — managers only.
 export const POST = withErrorHandling(async (req) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   requireRole(session, "MANAGER");
 
   const body = await req.json();
@@ -58,3 +58,5 @@ export const POST = withErrorHandling(async (req) => {
 
   return NextResponse.json(project, { status: 201 });
 });
+
+

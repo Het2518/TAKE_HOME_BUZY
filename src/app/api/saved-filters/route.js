@@ -6,7 +6,7 @@ import { requireAuth, withErrorHandling, HttpError } from "@/lib/permissions";
 // GET /api/tasks already accepts, stored as JSON, scoped to the logged-in user only.
 
 export const GET = withErrorHandling(async () => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const filters = await prisma.savedFilter.findMany({
     where: { userId: session.userId },
     orderBy: { createdAt: "desc" },
@@ -15,7 +15,7 @@ export const GET = withErrorHandling(async () => {
 });
 
 export const POST = withErrorHandling(async (req) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const { name, filterJson } = await req.json();
   if (!name || typeof filterJson !== "object") {
     throw new HttpError(400, "name and filterJson (object) are required");
@@ -29,3 +29,5 @@ export const POST = withErrorHandling(async (req) => {
 
   return NextResponse.json(saved, { status: 201 });
 });
+
+

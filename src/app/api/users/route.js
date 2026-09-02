@@ -6,7 +6,7 @@ import { requireAuth, withErrorHandling } from "@/lib/permissions";
 // Originally restricted to managers only, but members also need this to populate the
 // assignee filter on the All Tasks page (goal 6) and member-picker dropdowns.
 export const GET = withErrorHandling(async () => {
-  requireAuth();
+  await requireAuth();
 
   const users = await prisma.user.findMany({
     select: { id: true, name: true, email: true, role: true },
@@ -14,3 +14,5 @@ export const GET = withErrorHandling(async () => {
   });
   return NextResponse.json(users);
 });
+
+

@@ -7,7 +7,7 @@ import { requireAuth, withErrorHandling } from "@/lib/permissions";
 // If the due date changed after a dismissal, the alert must reappear — implemented by
 // comparing dismissedAt to dueDateUpdatedAt rather than just checking "is it dismissed."
 export const GET = withErrorHandling(async () => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const now = new Date();
 
   const candidateTasks = await prisma.task.findMany({
@@ -36,3 +36,5 @@ export const GET = withErrorHandling(async () => {
     alerts: active.map(({ dismissals, ...t }) => t),
   });
 });
+
+

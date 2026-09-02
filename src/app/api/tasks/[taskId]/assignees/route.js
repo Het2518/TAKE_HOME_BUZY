@@ -6,7 +6,7 @@ import { writeTaskEvent } from "@/lib/auditLog";
 // POST /api/tasks/:id/assignees  body: { userId }
 // Only members of the task's project may be assigned (goal 5) — enforced here, not just in the UI.
 export const POST = withErrorHandling(async (req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const task = await prisma.task.findUnique({ where: { id: params.taskId } });
   if (!task) throw new HttpError(404, "Task not found");
   await requireProjectAccess(session, task.projectId);
@@ -38,7 +38,7 @@ export const POST = withErrorHandling(async (req, { params }) => {
 
 // DELETE /api/tasks/:id/assignees?userId=...
 export const DELETE = withErrorHandling(async (req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const task = await prisma.task.findUnique({ where: { id: params.taskId } });
   if (!task) throw new HttpError(404, "Task not found");
   await requireProjectAccess(session, task.projectId);
@@ -61,3 +61,4 @@ export const DELETE = withErrorHandling(async (req, { params }) => {
 
   return NextResponse.json({ ok: true });
 });
+

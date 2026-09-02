@@ -8,7 +8,7 @@ import { writeTaskEvent } from "@/lib/auditLog";
 // chronological order. Comments are TaskEvent rows (type: COMMENT) so they live
 // in the same immutable audit trail as every other field change (goal 9).
 export const GET = withErrorHandling(async (_req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const task = await prisma.task.findUnique({ where: { id: params.taskId } });
   if (!task) throw new HttpError(404, "Task not found");
   await requireProjectAccess(session, task.projectId);
@@ -26,7 +26,7 @@ export const GET = withErrorHandling(async (_req, { params }) => {
 // separate feature. There is no PATCH/DELETE here on purpose — comments cannot be edited or
 // removed once posted, same as everything else in the timeline.
 export const POST = withErrorHandling(async (req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const task = await prisma.task.findUnique({ where: { id: params.taskId } });
   if (!task) throw new HttpError(404, "Task not found");
   await requireProjectAccess(session, task.projectId);
@@ -44,4 +44,5 @@ export const POST = withErrorHandling(async (req, { params }) => {
 
   return NextResponse.json(event, { status: 201 });
 });
+
 

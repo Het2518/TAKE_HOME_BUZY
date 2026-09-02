@@ -10,7 +10,7 @@ function toCsvValue(val) {
 // GET /api/tasks/export — exports the CURRENT filtered list as CSV (goal 7).
 // Accepts the same query params as GET /api/tasks so "export what I'm looking at" works.
 export const GET = withErrorHandling(async (req) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const { searchParams } = new URL(req.url);
 
   const search = searchParams.get("search") || "";
@@ -65,3 +65,5 @@ export const GET = withErrorHandling(async (req) => {
     },
   });
 });
+
+

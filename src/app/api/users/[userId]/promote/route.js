@@ -7,7 +7,7 @@ import { requireAuth, requireRole, withErrorHandling, HttpError } from "@/lib/pe
 // be a real path to creating additional managers, or the system paints itself into a corner
 // with exactly one manager forever. See docs/decisions.md for this trade-off.
 export const POST = withErrorHandling(async (_req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   requireRole(session, "MANAGER");
 
   const target = await prisma.user.findUnique({ where: { id: params.userId } });
@@ -21,3 +21,4 @@ export const POST = withErrorHandling(async (_req, { params }) => {
 
   return NextResponse.json(updated);
 });
+

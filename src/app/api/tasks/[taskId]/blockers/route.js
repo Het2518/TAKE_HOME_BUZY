@@ -13,7 +13,7 @@ async function loadTask(taskId) {
 
 // GET /api/tasks/:id/blockers — list all tasks that are currently blocking this one.
 export const GET = withErrorHandling(async (_req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const task = await loadTask(params.taskId);
   await requireProjectAccess(session, task.projectId);
 
@@ -31,7 +31,7 @@ export const GET = withErrorHandling(async (_req, { params }) => {
 // The blocker schema already exists in the DB (TaskBlocker model); this route is what
 // makes it actually usable without going through a full task update.
 export const POST = withErrorHandling(async (req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const task = await loadTask(params.taskId);
   await requireProjectAccess(session, task.projectId);
 
@@ -71,3 +71,4 @@ export const POST = withErrorHandling(async (req, { params }) => {
 
   return NextResponse.json(blocker, { status: 201 });
 });
+

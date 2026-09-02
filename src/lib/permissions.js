@@ -12,8 +12,9 @@ export class HttpError extends Error {
 }
 
 // Every protected route calls this first. Throws 401 if not logged in.
-export function requireAuth() {
-  const session = getSessionFromCookies();
+// Next.js 15: getSessionFromCookies is async so requireAuth must be too.
+export async function requireAuth() {
+  const session = await getSessionFromCookies();
   if (!session) throw new HttpError(401, "Not authenticated");
   return session; // { userId, role }
 }

@@ -10,7 +10,7 @@ import { writeTaskEvent } from "@/lib/auditLog";
 // moves (via getLegalTransitions), but this route re-validates from scratch regardless —
 // a direct API call with an illegal target must still be rejected with a clear reason.
 export const PATCH = withErrorHandling(async (req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
 
   const task = await prisma.task.findUnique({ where: { id: params.taskId } });
   if (!task) throw new HttpError(404, "Task not found");
@@ -59,3 +59,4 @@ export const PATCH = withErrorHandling(async (req, { params }) => {
 
   return NextResponse.json(updated);
 });
+

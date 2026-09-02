@@ -18,7 +18,7 @@ async function loadTaskOrThrow(taskId) {
 }
 
 export const GET = withErrorHandling(async (_req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const task = await loadTaskOrThrow(params.taskId);
   await requireProjectAccess(session, task.projectId);
 
@@ -37,7 +37,7 @@ export const GET = withErrorHandling(async (_req, { params }) => {
 // PATCH — edit fields. Logs each changed field individually so the timeline (goal 9)
 // shows exactly what changed, not just "task was updated."
 export const PATCH = withErrorHandling(async (req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const task = await loadTaskOrThrow(params.taskId);
   await requireProjectAccess(session, task.projectId);
 
@@ -143,7 +143,7 @@ export const PATCH = withErrorHandling(async (req, { params }) => {
 // DELETE — managers only (goal 1). The task's TaskEvent rows are removed via FK cascade;
 // this is the one place deletion happens at all, and it's intentionally restricted.
 export const DELETE = withErrorHandling(async (_req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   requireRole(session, "MANAGER");
   const task = await loadTaskOrThrow(params.taskId);
   await requireProjectAccess(session, task.projectId);
@@ -151,3 +151,4 @@ export const DELETE = withErrorHandling(async (_req, { params }) => {
   await prisma.task.delete({ where: { id: params.taskId } });
   return NextResponse.json({ ok: true });
 });
+

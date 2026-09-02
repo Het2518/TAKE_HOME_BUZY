@@ -5,7 +5,7 @@ import { requireAuth, requireRole, withErrorHandling, HttpError } from "@/lib/pe
 // PATCH /api/projects/:id/archive  body: { archived: true|false }
 // Archiving hides the project from default views but never deletes tasks or history (goal 2).
 export const PATCH = withErrorHandling(async (req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   requireRole(session, "MANAGER");
 
   const { archived } = await req.json();
@@ -17,3 +17,4 @@ export const PATCH = withErrorHandling(async (req, { params }) => {
   });
   return NextResponse.json(project);
 });
+

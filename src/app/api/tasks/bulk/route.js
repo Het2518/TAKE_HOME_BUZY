@@ -9,7 +9,7 @@ import { writeTaskEvent } from "@/lib/auditLog";
 // Requirement (goal 7): one illegal task must NOT fail the whole batch — every task is
 // processed independently and the response reports per-task success/failure with a reason.
 export const POST = withErrorHandling(async (req) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const body = await req.json();
   const parsed = bulkActionSchema.safeParse(body);
   if (!parsed.success) throw new HttpError(400, parsed.error.issues[0].message);
@@ -91,3 +91,5 @@ export const POST = withErrorHandling(async (req) => {
 
   return NextResponse.json({ results });
 });
+
+

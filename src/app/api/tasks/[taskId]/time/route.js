@@ -6,7 +6,7 @@ import { requireAuth, withErrorHandling, HttpError } from "@/lib/permissions";
 // POST /api/tasks/:id/time — start a new timer (endedAt = null)
 
 export const GET = withErrorHandling(async (_req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
   const entries = await prisma.timeEntry.findMany({
     where: { taskId: params.taskId },
     include: { user: { select: { id: true, name: true } } },
@@ -21,7 +21,7 @@ export const GET = withErrorHandling(async (_req, { params }) => {
 });
 
 export const POST = withErrorHandling(async (req, { params }) => {
-  const session = requireAuth();
+  const session = await requireAuth();
 
   // One open timer per user per task — reject if one already exists
   const open = await prisma.timeEntry.findFirst({
@@ -39,3 +39,4 @@ export const POST = withErrorHandling(async (req, { params }) => {
   });
   return NextResponse.json(entry, { status: 201 });
 });
+
