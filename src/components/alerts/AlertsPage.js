@@ -8,11 +8,25 @@ function daysOverdue(dueDateString) {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
-function getUrgencyColor(days) {
-  if (days > 14) return "var(--danger)";
-  if (days > 7) return "var(--warning)";
-  return "var(--text)";
+function getUrgencyConfig(days) {
+  if (days > 14) return { color: "var(--danger)", bg: "var(--danger-bg)", label: "Critical" };
+  if (days > 7)  return { color: "var(--warning)", bg: "var(--warning-bg)", label: "High" };
+  return { color: "var(--text-secondary)", bg: "var(--panel-highlight)", label: "Overdue" };
 }
+
+const IconAlert = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+    <line x1="12" y1="9" x2="12" y2="13"/>
+    <line x1="12" y1="17" x2="12.01" y2="17"/>
+  </svg>
+);
+
+const IconParty = (
+  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+  </svg>
+);
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState(null);
@@ -24,70 +38,115 @@ export default function AlertsPage() {
   useEffect(load, []);
 
   async function dismiss(taskId) {
-    setDismissingIds(s => new Set(s).add(taskId));
+    setDismissingIds((s) => new Set(s).add(taskId));
     await fetch(`/api/alerts/${taskId}/dismiss`, { method: "POST" });
     setTimeout(() => {
-      setAlerts(prev => prev.filter(a => a.id !== taskId));
-    }, 300);
+      setAlerts((prev) => prev.filter((a) => a.id !== taskId));
+      setDismissingIds((s) => { const next = new Set(s); next.delete(taskId); return next; });
+    }, 350);
   }
 
-  const IconAlert = <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>;
-
   return (
-    <div className="grid container animate-fade-in" style={{ gap: 24, maxWidth: 800 }}>
-      <div className="flex-between">
-        <h1 style={{ margin: 0 }}>Overdue Alerts</h1>
+    <div className="container animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 720 }}>
+
+      {/* Page Header */}
+      <div className="page-header">
+        <div className="page-header-title">
+          <h1>Overdue Alerts</h1>
+          {alerts !== null && (
+            <div className="page-header-subtitle">
+              {alerts.length === 0
+                ? "All tasks are on track"
+                : `${alerts.length} overdue task${alerts.length !== 1 ? "s" : ""} need attention`}
+            </div>
+          )}
+        </div>
       </div>
-      
+
+      {/* Alert list */}
       {alerts === null ? (
-        <div className="grid" style={{ gap: 16 }}>
-          {[1, 2, 3].map(i => <Skeleton key={i} height="88px" className="card" />)}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="skeleton" style={{ height: 76, borderRadius: "var(--radius-md)" }} />
+          ))}
         </div>
       ) : (
         <>
           {alerts.length === 0 && (
-            <div className="card" style={{ textAlign: "center", padding: "64px 24px" }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
-              <h3 style={{ margin: 0, marginBottom: 8 }}>All caught up!</h3>
-              <p style={{ color: "var(--text-dim)", margin: 0, fontSize: 14 }}>You have no active overdue alerts. Nice work.</p>
+            <div className="card">
+              <div className="empty-state">
+                <div className="empty-state-icon">{IconParty}</div>
+                <h3>All caught up!</h3>
+                <p>You have no active overdue alerts. Nice work keeping things on track.</p>
+              </div>
             </div>
           )}
-          
-          <div className="grid" style={{ gap: 16 }}>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {alerts.map((t) => {
               const days = daysOverdue(t.dueDate);
-              const color = getUrgencyColor(days);
+              const urgency = getUrgencyConfig(days);
               const isDismissing = dismissingIds.has(t.id);
-              
+
               return (
-                <div 
-                  key={t.id} 
-                  className="card flex-between animate-slide-up"
-                  style={{ 
-                    borderLeft: `4px solid ${color}`,
+                <div
+                  key={t.id}
+                  className="alert-card animate-slide-up"
+                  style={{
+                    borderLeft: `3px solid ${urgency.color}`,
                     opacity: isDismissing ? 0 : 1,
-                    transform: isDismissing ? "translateX(20px)" : "none",
-                    maxHeight: isDismissing ? 0 : 200, 
-                    paddingTop: isDismissing ? 0 : 24,
-                    paddingBottom: isDismissing ? 0 : 24,
-                    marginTop: isDismissing ? -16 : 0, 
+                    transform: isDismissing ? "translateX(16px)" : "none",
+                    maxHeight: isDismissing ? 0 : 200,
                     overflow: "hidden",
-                    transition: "all 300ms cubic-bezier(0.4, 0, 0.2, 1)",
+                    marginBottom: isDismissing ? -10 : 0,
+                    paddingTop: isDismissing ? 0 : undefined,
+                    paddingBottom: isDismissing ? 0 : undefined,
+                    transition: "opacity 300ms ease, transform 300ms ease, max-height 300ms ease, margin 300ms ease, padding 300ms ease",
                   }}
                 >
-                  <div className="flex" style={{ alignItems: "flex-start", gap: 16 }}>
-                    <div style={{ color, marginTop: 2 }}>{IconAlert}</div>
-                    <div>
-                      <Link href={`/tasks/${t.id}`} style={{ fontWeight: 600, fontSize: 15, display: "block" }}>{t.title}</Link>
-                      <div className="flex" style={{ fontSize: 13, color: "var(--text-dim)", marginTop: 8, gap: 12 }}>
-                        <span className="badge" style={{ background: "transparent", padding: 0, border: "none" }}>{t.project.key}</span>
-                        <span style={{ color, fontWeight: 500 }}>{days} days overdue</span>
-                        <span>Due {new Date(t.dueDate).toLocaleDateString()}</span>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flex: 1, minWidth: 0 }}>
+                    <div style={{ color: urgency.color, marginTop: 2, flexShrink: 0 }}>
+                      {IconAlert}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <Link
+                        href={`/tasks/${t.id}`}
+                        style={{ fontWeight: 600, fontSize: 14, color: "var(--text)", display: "block", marginBottom: 5, opacity: 1 }}
+                      >
+                        {t.title}
+                      </Link>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <span
+                          className="badge"
+                          style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 600, background: "transparent", border: "1px solid var(--border)", padding: "1px 6px" }}
+                        >
+                          {t.project.key}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: urgency.color,
+                            background: urgency.bg,
+                            padding: "1px 7px",
+                            borderRadius: "var(--radius-xs)",
+                          }}
+                        >
+                          {days}d overdue
+                        </span>
+                        <span style={{ fontSize: 12, color: "var(--text-dim)" }}>
+                          Due {new Date(t.dueDate).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                        </span>
                       </div>
                     </div>
                   </div>
-                  <button className="secondary" onClick={() => dismiss(t.id)} disabled={isDismissing}>
-                    {isDismissing ? <span className="spinner" /> : "Dismiss"}
+                  <button
+                    className="secondary"
+                    onClick={() => dismiss(t.id)}
+                    disabled={isDismissing}
+                    style={{ flexShrink: 0, fontSize: 12, padding: "5px 12px" }}
+                  >
+                    {isDismissing ? <span className="spinner" style={{ width: 12, height: 12 }} /> : "Dismiss"}
                   </button>
                 </div>
               );

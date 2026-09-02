@@ -1,10 +1,130 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useTheme } from "@/hooks/useTheme";
 import { KeyboardShortcutsModal } from "@/components/KeyboardNav";
 import Link from "next/link";
+
+// ── SVG Icon set ──────────────────────────────────────────────
+const icons = {
+  dashboard: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/>
+      <rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>
+    </svg>
+  ),
+  projects: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+    </svg>
+  ),
+  tasks: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 11 12 14 22 4"/>
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+    </svg>
+  ),
+  board: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2"/>
+      <line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>
+    </svg>
+  ),
+  myTasks: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+  ),
+  activity: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+  ),
+  alerts: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+    </svg>
+  ),
+  digest: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+      <polyline points="22,6 12,13 2,6"/>
+    </svg>
+  ),
+  moon: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  ),
+  sun: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="5"/>
+      <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+      <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+    </svg>
+  ),
+  logout: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  ),
+  keyboard: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="6" width="20" height="12" rx="2"/>
+      <line x1="6" y1="10" x2="6" y2="10"/><line x1="10" y1="10" x2="10" y2="10"/>
+      <line x1="14" y1="10" x2="14" y2="10"/><line x1="18" y1="10" x2="18" y2="10"/>
+      <line x1="6" y1="14" x2="18" y2="14"/>
+    </svg>
+  ),
+  logo: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+      <path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+    </svg>
+  ),
+};
+
+// Route label map for breadcrumbs
+const ROUTE_LABELS = {
+  "/dashboard": "Dashboard",
+  "/projects": "Projects",
+  "/tasks": "All Tasks",
+  "/board": "Board",
+  "/my-tasks": "My Tasks",
+  "/activity": "Activity",
+  "/alerts": "Alerts",
+  "/digest": "Digest",
+};
+
+function getBreadcrumb(pathname) {
+  if (!pathname) return "";
+  // Try exact match first
+  if (ROUTE_LABELS[pathname]) return ROUTE_LABELS[pathname];
+  // Try parent
+  for (const [route, label] of Object.entries(ROUTE_LABELS)) {
+    if (pathname.startsWith(route + "/")) return label;
+  }
+  return "";
+}
+
+function NavLink({ href, label, icon, badge }) {
+  const pathname = usePathname();
+  const isActive = pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
+  return (
+    <Link href={href} className={`nav-link ${isActive ? "active" : ""}`}>
+      <span className="nav-link-icon">{icon}</span>
+      <span className="nav-link-text">{label}</span>
+      {badge}
+    </Link>
+  );
+}
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();
@@ -34,109 +154,141 @@ export default function DashboardLayout({ children }) {
   if (loading || !user) {
     return (
       <div className="app-layout" style={{ justifyContent: "center", alignItems: "center" }}>
-        <span className="spinner" /> 
-        <span style={{ color: "var(--text-dim)", marginLeft: 12 }}>Loading…</span>
+        <span className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }} />
+        <span style={{ color: "var(--text-dim)", marginLeft: 12, fontSize: 13 }}>Loading…</span>
       </div>
     );
   }
 
-  const navLink = (href, label, icon, extra) => {
-    const isActive = pathname === href || pathname.startsWith(href + "/");
-    return (
-      <Link
-        href={href}
-        className={`nav-link ${isActive ? "active" : ""}`}
-      >
-        <span style={{ width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.8 }}>
-          {icon}
-        </span>
-        <span style={{ flex: 1 }}>{label}</span>
-        {extra}
-      </Link>
-    );
-  };
+  const breadcrumb = getBreadcrumb(pathname);
 
-  const IconDashboard = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>;
-  const IconProjects = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>;
-  const IconTasks = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>;
-  const IconBoard = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>;
-  const IconMyTasks = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>;
-  const IconActivity = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>;
-  const IconAlerts = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>;
-  const IconDigest = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>;
+  // Generate a deterministic color for avatar from name
+  const avatarColors = [
+    { bg: "#1e3a5f", fg: "#60a5fa" },
+    { bg: "#1a3a2a", fg: "#4ade80" },
+    { bg: "#3b1f44", fg: "#c084fc" },
+    { bg: "#3a2010", fg: "#fb923c" },
+    { bg: "#2d2a10", fg: "#facc15" },
+    { bg: "#1a2a3a", fg: "#38bdf8" },
+  ];
+  const avatarIdx = user.name ? user.name.charCodeAt(0) % avatarColors.length : 0;
+  const avatarStyle = {
+    background: avatarColors[avatarIdx].bg,
+    color: avatarColors[avatarIdx].fg,
+    borderColor: "transparent",
+  };
 
   return (
     <div className="app-layout">
-      {/* Sidebar */}
+      {/* ── Sidebar ── */}
       <aside className="sidebar">
-        <div style={{ padding: "20px 24px", display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 24, height: 24, background: "var(--accent)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-contrast)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12l5.25 5 2.625-3-2.625-3z"></path><path d="M11 14l2.625-3 5.25 5L22 12l-5.25-5-2.625 3 2.625 3z"></path></svg>
+        {/* Logo */}
+        <div className="sidebar-logo">
+          <div className="sidebar-logo-icon">
+            {icons.logo}
           </div>
-          <strong style={{ fontSize: 15, letterSpacing: "-0.01em" }}>Project Tracker</strong>
+          <span className="sidebar-logo-text">ProjectFlow</span>
         </div>
 
-        <nav style={{ flex: 1, overflowY: "auto", padding: "10px 0" }}>
-          <div style={{ padding: "0 24px 8px", fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Overview</div>
-          {navLink("/dashboard", "Dashboard", IconDashboard)}
-          {navLink("/projects", "Projects", IconProjects)}
-          {navLink("/tasks", "All Tasks", IconTasks)}
-          {navLink("/board", "Board", IconBoard)}
-          
-          <div style={{ padding: "24px 24px 8px", fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Me</div>
-          {navLink("/my-tasks", "My Tasks", IconMyTasks)}
-          {navLink("/activity", "Activity", IconActivity)}
-          {navLink("/alerts", "Alerts", IconAlerts, alertCount > 0 && (
-            <span className="badge" style={{ background: "var(--danger)", color: "#fff", border: "none", fontSize: 11, padding: "2px 6px" }}>
-              {alertCount}
-            </span>
-          ))}
-          {navLink("/digest", "Digest", IconDigest)}
+        {/* Nav */}
+        <nav className="sidebar-nav">
+          <div className="nav-section-label">Overview</div>
+          <NavLink href="/dashboard" label="Dashboard" icon={icons.dashboard} />
+          <NavLink href="/projects" label="Projects" icon={icons.projects} />
+          <NavLink href="/tasks" label="All Tasks" icon={icons.tasks} />
+          <NavLink href="/board" label="Board" icon={icons.board} />
+
+          <div className="nav-section-label" style={{ marginTop: 8 }}>Workspace</div>
+          <NavLink href="/my-tasks" label="My Tasks" icon={icons.myTasks} />
+          <NavLink href="/activity" label="Activity" icon={icons.activity} />
+          <NavLink
+            href="/alerts"
+            label="Alerts"
+            icon={icons.alerts}
+            badge={
+              alertCount > 0 && (
+                <span className="nav-badge">{alertCount > 99 ? "99+" : alertCount}</span>
+              )
+            }
+          />
+          <NavLink href="/digest" label="Digest" icon={icons.digest} />
         </nav>
 
-        <div style={{ padding: "16px", borderTop: "1px solid var(--border)" }}>
-          <div className="flex-between" style={{ padding: "8px" }}>
-            <div className="flex" style={{ gap: 10 }}>
-              <div className="avatar">{user.name.charAt(0)}</div>
-              <div className="flex-column" style={{ gap: 2 }}>
-                <span style={{ fontSize: 13, fontWeight: 500, lineHeight: 1 }}>{user.name}</span>
-                <span style={{ fontSize: 11, color: "var(--text-dim)", lineHeight: 1 }}>{user.role}</span>
+        {/* Footer */}
+        <div className="sidebar-footer">
+          <div className="sidebar-user">
+            <div className="avatar lg" style={avatarStyle}>
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="sidebar-user-info">
+              <div className="sidebar-user-name">{user.name}</div>
+              <div className="sidebar-user-role">
+                {user.role === "MANAGER" ? "Manager" : "Member"}
               </div>
             </div>
           </div>
-          <div className="flex" style={{ gap: 8, marginTop: 12 }}>
+          <div className="sidebar-actions">
             <button
-              className="ghost"
+              className="ghost icon-btn"
               onClick={toggleTheme}
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              style={{ flex: 1, padding: "6px" }}
+              style={{ flex: 1 }}
             >
-              {theme === "dark" ? "Light" : "Dark"}
+              {theme === "dark" ? icons.sun : icons.moon}
             </button>
-            <button className="ghost" onClick={handleLogout} style={{ flex: 1, padding: "6px" }}>Log out</button>
+            <button
+              className="ghost icon-btn"
+              onClick={() => document.getElementById("kb-help-modal")?.classList.toggle("visible")}
+              title="Keyboard shortcuts (?)"
+              style={{ flex: 1 }}
+            >
+              {icons.keyboard}
+            </button>
+            <button
+              className="ghost icon-btn"
+              onClick={handleLogout}
+              title="Log out"
+              style={{ flex: 1 }}
+            >
+              {icons.logout}
+            </button>
           </div>
         </div>
       </aside>
 
-      {/* Main Content Area */}
+      {/* ── Main Content ── */}
       <main className="main-content">
+        {/* Top Header */}
         <header className="top-header">
-          <div className="flex" style={{ color: "var(--text-dim)", fontSize: 13, fontWeight: 500 }}>
-            {/* Breadcrumb could go here based on pathname */}
+          <div className="top-header-left">
+            {breadcrumb && (
+              <div className="breadcrumb">
+                <span style={{ color: "var(--text-muted)", fontSize: 13 }}>ProjectFlow</span>
+                <span className="breadcrumb-sep">/</span>
+                <span className="breadcrumb-current">{breadcrumb}</span>
+              </div>
+            )}
           </div>
-          <div className="flex">
-            <button
-              className="secondary"
-              title="Keyboard shortcuts (?)"
-              style={{ padding: "4px 8px", fontSize: 12 }}
-              onClick={() => document.getElementById("kb-help-modal")?.classList.toggle("visible")}
+          <div className="top-header-right">
+            <span
+              style={{
+                fontSize: 11,
+                color: "var(--text-muted)",
+                padding: "3px 7px",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-xs)",
+                cursor: "default",
+                letterSpacing: "0.04em",
+              }}
+              title="Press ? for keyboard shortcuts"
             >
-              <kbd style={{ fontFamily: "inherit" }}>?</kbd>
-            </button>
+              ?
+            </span>
           </div>
         </header>
-        
-        <div style={{ flex: 1, overflowY: "auto" }}>
+
+        {/* Page Content */}
+        <div className="page-scroll">
           {children}
         </div>
       </main>

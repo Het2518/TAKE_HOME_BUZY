@@ -3,6 +3,39 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+const Logo = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-contrast)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+    <path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+  </svg>
+);
+
+const IconUser = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+const IconMail = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+    <polyline points="22,6 12,13 2,6"/>
+  </svg>
+);
+const IconLock = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+  </svg>
+);
+const IconAlertCircle = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8" x2="12" y2="12"/>
+    <line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+);
+
 export default function SignupPage() {
   const router = useRouter();
   const [form, setForm] = useState({ name: "", email: "", password: "" });
@@ -25,7 +58,7 @@ export default function SignupPage() {
     setLoading(false);
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Signup failed");
+      setError(data.error || "Signup failed. Please try again.");
       return;
     }
     router.push("/dashboard");
@@ -33,72 +66,111 @@ export default function SignupPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", padding: 24 }}>
-      <div style={{ width: "100%", maxWidth: 400 }}>
-        
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ width: 48, height: 48, background: "var(--accent)", borderRadius: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 24, boxShadow: "var(--shadow-md)" }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-contrast)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12l5.25 5 2.625-3-2.625-3z"></path><path d="M11 14l2.625-3 5.25 5L22 12l-5.25-5-2.625 3 2.625 3z"></path></svg>
-          </div>
-          <h1 style={{ fontSize: 28, margin: "0 0 8px 0" }}>Create an account</h1>
-          <p style={{ color: "var(--text-dim)", margin: 0 }}>Join Project Tracker today</p>
-        </div>
+    <div className="auth-layout">
+      <div className="auth-card animate-fade-in">
 
-        <div className="card animate-slide-up" style={{ padding: "32px 24px" }}>
-          <form onSubmit={handleSubmit} className="flex-column" style={{ gap: 20 }}>
-            <div className="flex-column" style={{ gap: 8 }}>
-              <label style={{ fontSize: 13, fontWeight: 500 }}>Full Name</label>
-              <input
-                value={form.name}
-                onChange={(e) => update("name", e.target.value)}
-                required
-                placeholder="Jane Doe"
-                style={{ padding: "10px 12px" }}
-              />
-            </div>
-            <div className="flex-column" style={{ gap: 8 }}>
-              <label style={{ fontSize: 13, fontWeight: 500 }}>Email Address</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => update("email", e.target.value)}
-                required
-                placeholder="name@company.com"
-                style={{ padding: "10px 12px" }}
-              />
-            </div>
-            <div className="flex-column" style={{ gap: 8 }}>
-              <label style={{ fontSize: 13, fontWeight: 500 }}>Password</label>
-              <input
-                type="password"
-                value={form.password}
-                onChange={(e) => update("password", e.target.value)}
-                required
-                placeholder="••••••••"
-                style={{ padding: "10px 12px" }}
-              />
-            </div>
-            
-            {error && (
-              <div style={{ padding: "12px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--radius-sm)", color: "var(--danger)", fontSize: 13 }}>
-                {error}
-              </div>
-            )}
-            
-            <button type="submit" className="primary" disabled={loading} style={{ width: "100%", padding: "10px", marginTop: 8, fontSize: 15 }}>
-              {loading ? <span className="spinner" style={{ width: 14, height: 14, borderTopColor: "var(--accent-contrast)", borderColor: "rgba(0,0,0,0.1)" }} /> : "Sign up"}
-            </button>
-          </form>
-          
-          <p style={{ margin: "24px 0 0 0", fontSize: 12, color: "var(--text-dim)", textAlign: "center", lineHeight: 1.5 }}>
-            New accounts are created as <strong style={{ color: "var(--text)" }}>Members</strong>. An existing manager can promote you afterward.
+        {/* Logo + heading */}
+        <div className="auth-logo">
+          <div className="auth-logo-icon">
+            <Logo />
+          </div>
+          <h1 style={{ fontSize: 22, margin: "0 0 6px" }}>Create your account</h1>
+          <p style={{ fontSize: 13.5, color: "var(--text-dim)", margin: 0 }}>
+            Join ProjectFlow and start collaborating
           </p>
         </div>
-        
-        <div className="animate-fade-in" style={{ textAlign: "center", marginTop: 24, fontSize: 13, color: "var(--text-dim)" }}>
-          Already have an account? <Link href="/login" style={{ color: "var(--text)", fontWeight: 500 }}>Sign in</Link>
+
+        {/* Form card */}
+        <div className="auth-form-card animate-slide-up">
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+            <div className="auth-field">
+              <label htmlFor="name" className="auth-label">Full name</label>
+              <div style={{ position: "relative" }}>
+                <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex", pointerEvents: "none" }}>
+                  <IconUser />
+                </span>
+                <input
+                  id="name"
+                  value={form.name}
+                  onChange={(e) => update("name", e.target.value)}
+                  required
+                  placeholder="Jane Doe"
+                  style={{ paddingLeft: 32 }}
+                  autoComplete="name"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <div className="auth-field">
+              <label htmlFor="email" className="auth-label">Email address</label>
+              <div style={{ position: "relative" }}>
+                <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex", pointerEvents: "none" }}>
+                  <IconMail />
+                </span>
+                <input
+                  id="email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => update("email", e.target.value)}
+                  required
+                  placeholder="name@company.com"
+                  style={{ paddingLeft: 32 }}
+                  autoComplete="email"
+                />
+              </div>
+            </div>
+
+            <div className="auth-field">
+              <label htmlFor="password" className="auth-label">Password</label>
+              <div style={{ position: "relative" }}>
+                <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex", pointerEvents: "none" }}>
+                  <IconLock />
+                </span>
+                <input
+                  id="password"
+                  type="password"
+                  value={form.password}
+                  onChange={(e) => update("password", e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  style={{ paddingLeft: 32 }}
+                  autoComplete="new-password"
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="auth-error">
+                <IconAlertCircle />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="primary"
+              disabled={loading}
+              style={{ width: "100%", padding: "9px", marginTop: 4, fontSize: 14, fontWeight: 500 }}
+            >
+              {loading ? (
+                <span className="spinner" style={{ width: 14, height: 14, borderTopColor: "var(--accent-contrast)", borderColor: "rgba(255,255,255,0.2)" }} />
+              ) : "Create account"}
+            </button>
+
+            <p style={{ margin: 0, fontSize: 11.5, color: "var(--text-muted)", textAlign: "center", lineHeight: 1.5 }}>
+              New accounts are created as <strong style={{ color: "var(--text-secondary)" }}>Members</strong>. A manager can promote you afterward.
+            </p>
+          </form>
         </div>
 
+        <div className="auth-footer animate-fade-in" style={{ animationDelay: "100ms" }}>
+          Already have an account?{" "}
+          <Link href="/login" style={{ color: "var(--text)", fontWeight: 500 }}>
+            Sign in
+          </Link>
+        </div>
       </div>
     </div>
   );
