@@ -214,9 +214,125 @@ Log of the real decisions that shaped this codebase — each one had a genuine a
 
 ---
 
-## Decision 12 - Skipping Practical But Out-of-Scope Features (Attachments, Notifications, Kanban Rank)
+## Decision 14 - Skipping Practical But Out-of-Scope Features (Attachments, Notifications, Kanban Rank)
 
 - **Chose:** To omit File Attachments, a general In-App Notification Inbox, Kanban vertical drag-and-drop position sorting, and editable comments.
 - **Rejected:** Over-engineering the solution to match 100% of Jira/Asana's feature set.
-- **Why:** The assessment instructions strictly provided 10 specific goals. While practically necessary for a real enterprise product, building an S3-backed attachment service, or adding a position float to tasks for Kanban ranking, distracts from the core assessment criteria (state machines, RBAC, immutable logs, and complex queries). The E2E test script (	est-e2e.js) mathematically proves that the 10 core goals are fully satisfied. Comments remain strictly immutable as part of the TaskEvent audit log to preserve the integrity of the timeline.
+- **Why:** The assessment instructions strictly provided 10 specific goals. While practically necessary for a real enterprise product, building an S3-backed attachment service, or adding a position float to tasks for Kanban ranking, distracts from the core assessment criteria (state machines, RBAC, immutable logs, and complex queries). The E2E test script (test-e2e.js) mathematically proves that the 10 core goals are fully satisfied. Comments remain strictly immutable as part of the TaskEvent audit log to preserve the integrity of the timeline.
 
+---
+
+---
+
+# Appendix — Production-Grade Additions Beyond the Assessment Scope
+
+The items below were not required by the assessment but are necessary for any real-world deployment. Each one addresses a concrete gap found after the assessment goals were met.
+
+---
+
+## A1 — `middleware.js`: Server-Side Page Auth Guard
+
+**Gap:** Dashboard pages had only a client-side `useEffect` redirect in `DashboardLayout`. A logged-out user who navigated directly to `/tasks` would see the sidebar render briefly before being redirected. More importantly, server-rendered content would be visible for a moment on slow connections.
+
+**Fix:** Added `middleware.js` at the project root. Next.js runs middleware at the edge before any page renders. It checks for the presence of the `session` cookie and redirects to `/login` if missing. Full JWT verification still happens inside each API route — middleware is an additional UX and security layer, not a replacement.
+
+**Trade-off:** Middleware only checks cookie *presence*, not JWT validity. An expired or tampered token will get past the middleware check but be rejected by the first API call with a 401. This is acceptable — the alternative (full JWT verification in Edge runtime) would require replacing `jsonwebtoken` with an edge-compatible library like `jose`.
+
+---
+
+## A2 — `GET /api/tasks/:id/comments`: Comments Were Write-Only
+
+**Gap:** `POST /api/tasks/:id/comments` existed but `GET` did not. Comments (stored as `TaskEvent` rows with `type: "COMMENT"`) could be written but never retrieved except via the full timeline endpoint. Any UI that shows a comment thread had no dedicated endpoint to call.
+
+**Fix:** Added `GET /api/tasks/:id/comments` returning all `COMMENT`-type events in chronological order, including the commenter's name. Reuses the same access control path (`requireProjectAccess`) as the POST handler.
+
+---
+
+## A3 — `PATCH /api/auth/me`: Users Had No Way to Change Their Own Name or Password
+
+**Gap:** Once a user signed up, their name and password were permanent. There was no self-service profile edit of any kind.
+
+**Fix:** Added `PATCH /api/auth/me` accepting `{ name?, currentPassword?, newPassword? }`. Changing the password requires submitting the current one first — a stolen session token alone is not sufficient to lock someone out of their account.
+
+**Added:** `updateMeSchema` in `validators.js` to validate the request.
+
+---
+
+## A4 — Rate Limiting on `/api/auth/login`
+
+**Gap:** The login endpoint accepted unlimited attempts from any IP — a brute-force attack was trivially possible.
+
+**Fix:** Added `src/lib/rateLimit.js`, a simple in-memory sliding-window rate limiter (10 attempts per IP per 15-minute window). Applied at the top of the `POST /api/auth/login` handler, before any DB query.
+
+**Documented limitation:** In-memory means the counter resets on server restart and does not work across multiple instances. For production multi-instance deployments (e.g. Vercel serverless), the comment in `rateLimit.js` documents the exact swap needed: `@upstash/ratelimit` with a Redis backend, same function interface.
+
+---
+
+## A5 — `/api/tasks/:id/blockers` API: The Blockers Schema Was Dead Weight
+
+**Gap:** The `TaskBlocker` model was fully defined in the Prisma schema with all relations, indexes, and cascade rules. The only way to manipulate blockers was via the `blockingTaskIds` field in `PATCH /api/tasks/:id`, which replaced the entire set atomically. There was no way to add or remove a single blocker, and no way to list blockers independently.
+
+**Fix:**
+- `GET /api/tasks/:id/blockers` — list current blockers
+- `POST /api/tasks/:id/blockers` — add a single blocker (reuses the same cycle-detection algorithm from `taskStateMachine.js` already used in the PATCH route)
+- `DELETE /api/tasks/:id/blockers/:blockingTaskId` — remove a specific blocker edge
+
+The `:blockingTaskId` URL parameter in the DELETE route is the ID of the *blocking task*, not the internal `TaskBlocker` row ID. This keeps the API semantically meaningful without exposing join-table internals.
+
+---
+
+## A6 — `GET /api/users/:id` and `PATCH /api/users/:id`
+
+**Gap:** `GET /api/users` listed all users and `GET /api/users/lookup` existed for search, but no route returned a single user's profile by ID. The `users/[userId]/promote` route existed under a sub-path but the `[userId]` level itself had no `route.js`. A "view member profile" page had no API to call.
+
+**Fix:**
+- `GET /api/users/:id` — public profile (no `passwordHash`), open to any authenticated user
+- `PATCH /api/users/:id` — managers only; allows editing name and email. Password resets are intentionally excluded (the user must use `PATCH /api/auth/me` with their current password).
+
+---
+
+## A7 — `GET /api/health`: No Health Check Endpoint
+
+**Gap:** Every production deployment needs a health check. Load balancers, uptime monitors (BetterUptime, UptimeRobot), and deployment pipelines (Railway, Fly.io) all ping a health endpoint to decide whether the instance is ready to receive traffic.
+
+**Fix:** `GET /api/health` — no auth required. Runs `SELECT 1` against the database and returns `{ ok: true, db: "ok", uptime: <seconds> }` on success, or `{ ok: false, db: "error" }` with HTTP 503 if the DB is unreachable.
+
+---
+
+## A8 — `error.js` and `not-found.js`: Raw Error Screens in Production
+
+**Gap:** Any unhandled error in the React tree showed Next.js's built-in error overlay. Any bad URL showed the default Next.js 404 page. Neither matched the app's design.
+
+**Fix:** Added `src/app/error.js` (must be a client component — Next.js requirement) and `src/app/not-found.js`. Both are minimal and match the existing layout.
+
+---
+
+## A9 — `loading.js` Route Skeletons: `Skeleton.js` Was Unused
+
+**Gap:** `src/components/Skeleton.js` existed but no route in the app had a `loading.js` file, so Next.js had no Suspense boundary to show during navigation. The result was a blank white flash between route transitions.
+
+**Fix:** Added `loading.js` at the root level and for the two most-visited routes (`/tasks`, `/dashboard`). Each uses the existing `Skeleton` component and the `spinner` CSS class already present in `globals.css`.
+
+---
+
+## A10 — `docker-compose.yml`: No Way to Run Locally Without Manual PostgreSQL Setup
+
+**Gap:** A developer cloning the repo needed to install and configure PostgreSQL manually before they could run `prisma migrate dev`. This is a barrier that kills onboarding momentum.
+
+**Fix:** `docker-compose.yml` with a single `db` service (postgres:16-alpine). Running `docker compose up -d` gives a ready-to-use database in under 30 seconds. The connection string to paste into `.env` is shown in the file's comments.
+
+---
+
+## A11 — `.github/workflows/ci.yml`: Tests Only Ran Manually
+
+**Gap:** The test suite exists and has good coverage, but `npm test` only ran if someone remembered to run it. There was no automation — broken code could be merged to `main` with no checks.
+
+**Fix:** GitHub Actions workflow triggered on every push and pull request to `main`. Steps: checkout → install deps → `prisma generate` → `vitest run`. No database is needed because the unit tests mock Prisma calls.
+
+---
+
+## A12 — `.env.example`: `nodemailer` Was Installed But Env Vars Were Undocumented
+
+**Gap:** `nodemailer` is listed in `package.json` dependencies (used by the digest feature). The original `.env.example` had only `DATABASE_URL` and `JWT_SECRET`. A developer setting up the project had no idea that email sending required `SMTP_*` environment variables.
+
+**Fix:** Expanded `.env.example` with `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `APP_URL`, and `NODE_ENV`. Each section is labelled. The SMTP comment points to Mailtrap as a zero-cost local dev option.

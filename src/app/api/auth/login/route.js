@@ -3,8 +3,16 @@ import { prisma } from "@/lib/prisma";
 import { verifyPassword, signToken, setSessionCookie } from "@/lib/auth";
 import { loginSchema } from "@/lib/validators";
 import { withErrorHandling, HttpError } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export const POST = withErrorHandling(async (req) => {
+  // Block brute-force attempts. IP comes from the reverse proxy header on Vercel/Railway;
+  // falls back to a fixed key in local dev where there's no proxy.
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "local";
+  if (!checkRateLimit(ip)) {
+    throw new HttpError(429, "Too many login attempts — try again in 15 minutes");
+  }
+
   const body = await req.json();
   const parsed = loginSchema.safeParse(body);
   if (!parsed.success) throw new HttpError(400, "Email and password are required");
@@ -22,3 +30,4 @@ export const POST = withErrorHandling(async (req) => {
 
   return NextResponse.json({ id: user.id, email: user.email, name: user.name, role: user.role });
 });
+

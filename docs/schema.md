@@ -58,6 +58,12 @@
 | blockingTaskId | String | The task that must finish first — FK → Task.id (cascade delete) |
 | _(unique)_ | — | `[taskId, blockingTaskId]` — prevents duplicate edges |
 
+**API surface for this table:**
+- `GET /api/tasks/[id]/blockers` — list current blockers
+- `POST /api/tasks/[id]/blockers` body: `{ blockingTaskId }` — add a blocker (cycle detection runs before insert)
+- `DELETE /api/tasks/[id]/blockers/[blockingTaskId]` — remove a specific blocker edge
+- Blockers can also be replaced atomically via `blockingTaskIds` in `PATCH /api/tasks/[id]`
+
 ### TaskAssignee (join table)
 | Column | Type | Notes |
 |---|---|---|
@@ -153,3 +159,14 @@
 **Activity feed** (`GET /api/activity`): paginates `TaskEvent` across all visible projects at 30 per page. `TaskEvent` will be the largest table by far (one row per field change, not per task). The existing `[taskId, createdAt]` index does not help a cross-project query ordered by `createdAt DESC`. A covering index on `(createdAt DESC)` would be needed, or an event-fan-out write model.
 
 **User list** (`GET /api/users`): currently returns every user on every request that needs a dropdown. At 100x user count, this needs pagination or a typeahead/autocomplete pattern backed by a search query.
+
+---
+
+## Schema changes post-assessment
+
+No columns or tables were added in the production-grade pass — the schema was complete. The changes were all API surface additions that activated models already present:
+
+| Model | Status before | Status after |
+|---|---|---|
+| `TaskBlocker` | Schema-only, accessible only via `PATCH /api/tasks/[id]` bulk replace | Now has dedicated `GET`, `POST`, and `DELETE` endpoints |
+| `TaskEvent` (COMMENT type) | Write path only (`POST /api/tasks/[id]/comments`) | Now also has a `GET` endpoint returning COMMENT-type rows |

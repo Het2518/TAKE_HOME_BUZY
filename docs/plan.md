@@ -14,6 +14,7 @@ The constraint I gave myself: never leave a session with the app in a broken sta
 | 4 | Server-side search/filter/sort/pagination, bulk actions (all 3 types), CSV export, debounce fix | Goals 6, 7 | All Tasks page filters and paginates server-side; bulk change and CSV export functional |
 | 5 | Dashboard aggregate queries, immutable audit trail, timeline UI, comments, activity feed (stretch) | Goals 8, 9 | Dashboard shows real numbers; task timeline shows every change; comments post to the timeline |
 | 6 | Overdue alerts, dismiss logic, alert reappear, nav badge, seed data (16 Indian users), 49 tests | Goal 10 + quality | Alerts appear, dismiss, reappear; test suite passes; seed script produces demo-ready data |
+| 7 | Production-grade additions: auth guard, rate limiting, blockers API, health check, CI, Docker, loading states | Post-assessment | See Appendix A1–A12 in `docs/decisions.md` |
 
 ---
 
@@ -84,5 +85,31 @@ The Prisma schema was also written in full at the end of Session 1 — all 8 tab
 - Drag-and-drop board view — in `src/app/(dashboard)/board/page.js`
 - Saved filter views — `SavedFilter` model, `GET/POST /api/saved-filters`, delete per filter
 - Cross-project activity feed — `GET /api/activity`, paginated, role-scoped
+- Time tracking — `TimeEntry` model, `GET/POST /api/tasks/[id]/time`, `PATCH/DELETE /api/tasks/[id]/time/[entryId]`
+- Per-project custom fields — `CustomFieldDefinition` + `CustomFieldValue` models, full CRUD API
+- Keyboard navigation shortcuts — `src/components/KeyboardNav.js`, `?` modal
+- @-mentions in comments — `src/components/Mentions.js`
+- Weekly digest — `GET /api/digest`
 
 The cut decision was deliberate and explicit: finish all 10 required goals to a high standard before starting any stretch. The brief's own framing supports this — "a system that does eight things well is better than one that does twelve things poorly."
+
+---
+
+## Session 7 — Production-grade additions (post-assessment)
+
+After all 10 goals and stretch goals were complete, a separate pass was made to address gaps that would prevent real-world deployment.
+
+| Item | What was missing | Fix |
+|---|---|---|
+| `middleware.js` | Pages had no server-side auth guard | Edge middleware redirects before any render |
+| `src/lib/rateLimit.js` | Login had no brute-force protection | In-memory sliding-window rate limiter |
+| `PATCH /api/auth/me` | Users couldn’t change name or password | Added with current-password verification |
+| `GET /api/tasks/[id]/comments` | Comments were write-only | Added GET handler to comments route |
+| `/api/tasks/[id]/blockers` | `TaskBlocker` schema had no API | GET, POST, and DELETE routes created |
+| `/api/users/[id]` | No single-user profile endpoint | GET + PATCH (manager only) added |
+| `/api/health` | No health check endpoint | DB-pinging endpoint, no auth required |
+| `src/app/error.js` + `not-found.js` | Raw Next.js error/404 screens | Custom pages matching app design |
+| `loading.js` files | `Skeleton.js` was never wired up | Route-level loading states added |
+| `docker-compose.yml` | Manual Postgres setup required | One-command local DB via Docker |
+| `.github/workflows/ci.yml` | Tests only ran manually | Auto-runs on every push/PR |
+| `.env.example` | SMTP vars completely undocumented | Full env var documentation added |

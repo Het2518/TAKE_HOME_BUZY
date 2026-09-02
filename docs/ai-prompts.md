@@ -203,3 +203,133 @@ I received an analysis of the existing endpoints verifying that 100% of the 10 g
 
 ### What I corrected
 Nothing to correct. I documented these missing practical elements in docs/decisions.md as conscious omissions meant to keep the take-home assessment strictly focused on the required constraints.
+
+---
+
+## 14 — Full Project Structure Audit
+
+### Prompt
+> "Scan the entire project structure. What things are missing that were not asked for in the assessment, but should practically be present in a real-world project?"
+
+### What I got
+A prioritised list of 19 missing items across four severity tiers:
+
+**Critical (would break real deployment):**
+- `prisma/migrations/` folder missing — without migration history, new developers cannot safely recreate the database
+- No `middleware.js` — dashboard pages had no server-side auth guard; a logged-out user navigating directly to `/dashboard` bypassed all protection
+- Incomplete `.env.example` — `nodemailer` was a listed dependency but its required SMTP environment variables were completely undocumented
+
+**High (professional standard):**
+- `public/` folder absent — no favicon, logo, or OG image
+- `src/components/ui/` folder existed but was completely empty — no shared Button, Input, Modal, Badge primitives
+- `src/components/layout/` folder existed but was completely empty
+- No `error.js` or `not-found.js` — any runtime crash showed the raw Next.js error overlay
+- No `loading.js` per route — the existing `Skeleton.js` component was wired to nothing
+
+**Medium:** No ESLint/Prettier config, no `constants.js`, no API rate limiting, inconsistent path aliases, no `CHANGELOG.md`.
+
+**Nice to have:** No `docker-compose.yml`, no `openapi.yaml`, no `scripts/` folder, `redme.md` typo file, `test-e2e.js` at root instead of inside `tests/`, no CI/CD workflow.
+
+### What I corrected
+Nothing to correct — this was a diagnostic scan. All actionable items became the implementation backlog for the sessions below.
+
+---
+
+## 15 — Missing API Analysis
+
+### Prompt
+> "Apart from the existing APIs, which APIs should be here that are not currently present? Thinking critically, what is missing?"
+
+### What I got
+A complete map of every existing endpoint (30 routes across 9 route groups), followed by a prioritised gap list:
+
+**Showstoppers:**
+1. `GET /api/tasks/[id]/comments` — comments were write-only; POST existed but GET did not
+2. `POST /api/tasks/[id]/blockers` — `TaskBlocker` model was fully defined in the schema but had zero API surface
+3. `PATCH /api/auth/me` — users had no way to change their own name or password
+4. `DELETE /api/tasks/[id]/comments/[commentId]` — comments were permanent
+5. `DELETE /api/tasks/[id]/time/[entryId]` — time entries could never be deleted
+
+**Other gaps identified:**
+- `GET /api/users/[id]` — no single-user profile endpoint
+- `PATCH /api/users/[id]` — managers could not edit user name or email
+- `GET /api/tasks/[id]/blockers` — no way to list blockers independently
+- `DELETE /api/tasks/[id]/blockers/[blockingTaskId]` — no way to remove a single blocker
+- `POST /api/auth/refresh` — JWT expiry was silent; no refresh flow existed
+- `GET /api/saved-filters/[filterId]` — filters could be deleted but not fetched individually
+
+### What I corrected
+The analysis noted that `DELETE /api/tasks/[id]/comments/[commentId]` was missing, but on reflection this was a deliberate design decision documented in the existing code — comments are `TaskEvent` rows in an immutable audit log. Deleting them would violate the append-only contract that the entire timeline feature depends on. The missing piece was the `GET` endpoint, not the `DELETE`.
+
+---
+
+## 16 — Selecting What to Implement for Production Grade
+
+### Prompt
+> "Which of these missing items need to be here to make this project genuinely production-grade and suitable for real-world use?"
+
+### What I got
+A tiered priority list with honest reasoning:
+
+**Tier 1 — Showstoppers (the app is broken without these):**
+- `GET /api/tasks/[id]/comments` (comments are write-only)
+- `middleware.js` (pages are completely unprotected at the server level)
+- `PATCH /api/auth/me` (users can never change their credentials)
+- `prisma/migrations/` history
+- Rate limiting on `/api/auth/login`
+- `error.js` + `not-found.js`
+
+**Tier 2 — Broken features (schema exists, API does not):**
+- Full blockers API (GET, POST, DELETE)
+- `DELETE /api/tasks/[id]/time/[entryId]`
+- `GET /api/users/[id]`
+
+**Tier 3 — Operations:** Health check endpoint, Docker Compose, complete `.env.example`, GitHub Actions CI.
+
+**Tier 4 — UX polish:** `loading.js` skeletons, favicon, token refresh or graceful session expiry.
+
+### What I corrected
+Nothing — I accepted this prioritisation and used it to drive the implementation order in Session 7.
+
+---
+
+## 17 — Implementing All Production-Grade Items
+
+### Prompt
+> "I want to implement all of these things. Write the code in my existing style — simple and readable, not AI-generated looking. Keep it consistent with the codebase style and make it easy for anyone to understand. Also update the documentation to mention the extra things beyond the assessment tasks in a final appendix."
+
+### What I got
+A full implementation across 20+ files, all written in the same style as the existing codebase:
+
+**New files created:**
+- `middleware.js` — edge cookie check, `matcher` covering all dashboard routes
+- `src/lib/rateLimit.js` — in-memory sliding window, same comment style as `permissions.js`
+- `src/app/error.js` — minimal client component, matches existing layout
+- `src/app/not-found.js` — simple centred layout with a "Go to dashboard" link
+- `src/app/loading.js` — uses the same `spinner` CSS class already in `DashboardLayout`
+- `src/app/(dashboard)/tasks/loading.js` — uses `Skeleton` component
+- `src/app/(dashboard)/dashboard/loading.js` — grid skeleton matching dashboard card layout
+- `src/app/api/tasks/[taskId]/blockers/route.js` — GET + POST with cycle detection
+- `src/app/api/tasks/[taskId]/blockers/[blockingTaskId]/route.js` — DELETE
+- `src/app/api/users/[userId]/route.js` — GET + PATCH
+- `src/app/api/health/route.js` — `SELECT 1` ping, returns uptime
+- `docker-compose.yml` — DB-only, one-command local setup
+- `.github/workflows/ci.yml` — install → generate → test
+
+**Existing files modified:**
+- `src/app/api/auth/login/route.js` — added `checkRateLimit(ip)` before any DB query
+- `src/app/api/auth/me/route.js` — added `PATCH` handler with current-password verification
+- `src/app/api/tasks/[taskId]/comments/route.js` — added `GET` handler
+- `src/lib/validators.js` — added `updateMeSchema`
+- `.env.example` — expanded from 2 vars to 9 with section headers and comments
+
+**Documentation updated:**
+- `docs/decisions.md` — Appendix A1–A12 with rationale for every addition
+- `docs/architecture.md` — API surface table updated (22 → 30 routes), env vars table expanded, new "Production-grade additions" section
+- `docs/plan.md` — added Session 7 row, corrected the stretch goals list (time tracking, custom fields, etc. were built, not cut), added Session 7 detail table
+- `docs/schema.md` — added API surface note to the `TaskBlocker` section, added "Schema changes post-assessment" section
+- `docs/ai-prompts.md` — this section
+
+### What I corrected
+One design decision during implementation: the initial plan considered making the `DELETE /api/tasks/[id]/blockers` route use the internal `TaskBlocker` row ID as the URL parameter. On reflection, using `:blockingTaskId` (the ID of the blocking task) is more semantically correct and avoids exposing join-table internals to the client. A URL like `DELETE /tasks/abc/blockers/xyz` reads as "remove task xyz from the blockers of task abc" — that is the natural REST expression of the operation. The implementation reflects this.
+

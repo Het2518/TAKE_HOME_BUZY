@@ -58,3 +58,13 @@ export const bulkActionSchema = z.object({
 export const commentSchema = z.object({
   text: z.string().min(1),
 });
+
+// Used by PATCH /api/auth/me — at least one field must be present.
+export const updateMeSchema = z.object({
+  name: z.string().min(1).optional(),
+  currentPassword: z.string().optional(), // required when newPassword is set
+  newPassword: z.string().min(8, "New password must be at least 8 characters").optional(),
+}).refine(
+  (d) => d.name || d.newPassword,
+  { message: "Provide at least name or newPassword" }
+);
