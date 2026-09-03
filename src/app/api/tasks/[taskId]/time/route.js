@@ -7,8 +7,9 @@ import { requireAuth, withErrorHandling, HttpError } from "@/lib/permissions";
 
 export const GET = withErrorHandling(async (_req, { params }) => {
   const session = await requireAuth();
+  const { taskId } = await params;
   const entries = await prisma.timeEntry.findMany({
-    where: { taskId: params.taskId },
+    where: { taskId },
     include: { user: { select: { id: true, name: true } } },
     orderBy: { startedAt: "desc" },
   });
@@ -22,17 +23,18 @@ export const GET = withErrorHandling(async (_req, { params }) => {
 
 export const POST = withErrorHandling(async (req, { params }) => {
   const session = await requireAuth();
+  const { taskId } = await params;
 
   // One open timer per user per task — reject if one already exists
   const open = await prisma.timeEntry.findFirst({
-    where: { taskId: params.taskId, userId: session.userId, endedAt: null },
+    where: { taskId, userId: session.userId, endedAt: null },
   });
   if (open) throw new HttpError(409, "Timer already running for this task");
 
   const body = await req.json().catch(() => ({}));
   const entry = await prisma.timeEntry.create({
     data: {
-      taskId: params.taskId,
+      taskId,
       userId: session.userId,
       description: body.description || "",
     },

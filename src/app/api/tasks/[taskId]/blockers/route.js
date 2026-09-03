@@ -14,11 +14,12 @@ async function loadTask(taskId) {
 // GET /api/tasks/:id/blockers — list all tasks that are currently blocking this one.
 export const GET = withErrorHandling(async (_req, { params }) => {
   const session = await requireAuth();
-  const task = await loadTask(params.taskId);
+  const { taskId } = await params;
+  const task = await loadTask(taskId);
   await requireProjectAccess(session, task.projectId);
 
   const blockers = await prisma.taskBlocker.findMany({
-    where: { taskId: params.taskId },
+    where: { taskId },
     include: {
       blockingTask: { select: { id: true, title: true, status: true } },
     },
@@ -32,12 +33,13 @@ export const GET = withErrorHandling(async (_req, { params }) => {
 // makes it actually usable without going through a full task update.
 export const POST = withErrorHandling(async (req, { params }) => {
   const session = await requireAuth();
-  const task = await loadTask(params.taskId);
+  const { taskId } = await params;
+  const task = await loadTask(taskId);
   await requireProjectAccess(session, task.projectId);
 
   const { blockingTaskId } = await req.json();
   if (!blockingTaskId) throw new HttpError(400, "blockingTaskId is required");
-  if (blockingTaskId === params.taskId) throw new HttpError(422, "A task cannot block itself");
+  if (blockingTaskId === taskId) throw new HttpError(422, "A task cannot block itself");
 
   const blockingTask = await prisma.task.findUnique({ where: { id: blockingTaskId } });
   if (!blockingTask) throw new HttpError(404, "Blocking task not found");
@@ -50,18 +52,18 @@ export const POST = withErrorHandling(async (req, { params }) => {
     await prisma.taskBlocker.findMany({ select: { taskId: true, blockingTaskId: true } })
   ).map((e) => [e.taskId, e.blockingTaskId]);
 
-  if (wouldCreateCycle(edges, params.taskId, blockingTaskId)) {
+  if (wouldCreateCycle(edges, taskId, blockingTaskId)) {
     throw new HttpError(422, "Adding this blocker would create a circular dependency");
   }
 
   const blocker = await prisma.taskBlocker.upsert({
-    where: { taskId_blockingTaskId: { taskId: params.taskId, blockingTaskId } },
-    create: { taskId: params.taskId, blockingTaskId },
+    where: { taskId_blockingTaskId: { taskId, blockingTaskId } },
+    create: { taskId, blockingTaskId },
     update: {}, // already exists — idempotent
   });
 
   await writeTaskEvent({
-    taskId: params.taskId,
+    taskId,
     userId: session.userId,
     type: "FIELD_CHANGE",
     field: "blockedBy",

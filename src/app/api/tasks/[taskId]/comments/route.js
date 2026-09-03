@@ -9,12 +9,13 @@ import { writeTaskEvent } from "@/lib/auditLog";
 // in the same immutable audit trail as every other field change (goal 9).
 export const GET = withErrorHandling(async (_req, { params }) => {
   const session = await requireAuth();
-  const task = await prisma.task.findUnique({ where: { id: params.taskId } });
+  const { taskId } = await params;
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) throw new HttpError(404, "Task not found");
   await requireProjectAccess(session, task.projectId);
 
   const comments = await prisma.taskEvent.findMany({
-    where: { taskId: params.taskId, type: "COMMENT" },
+    where: { taskId, type: "COMMENT" },
     include: { user: { select: { id: true, name: true } } },
     orderBy: { createdAt: "asc" },
   });
@@ -27,7 +28,8 @@ export const GET = withErrorHandling(async (_req, { params }) => {
 // removed once posted, same as everything else in the timeline.
 export const POST = withErrorHandling(async (req, { params }) => {
   const session = await requireAuth();
-  const task = await prisma.task.findUnique({ where: { id: params.taskId } });
+  const { taskId } = await params;
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) throw new HttpError(404, "Task not found");
   await requireProjectAccess(session, task.projectId);
 

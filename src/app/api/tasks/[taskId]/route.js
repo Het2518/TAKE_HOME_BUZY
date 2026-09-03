@@ -19,11 +19,12 @@ async function loadTaskOrThrow(taskId) {
 
 export const GET = withErrorHandling(async (_req, { params }) => {
   const session = await requireAuth();
-  const task = await loadTaskOrThrow(params.taskId);
+  const { taskId } = await params;
+  const task = await loadTaskOrThrow(taskId);
   await requireProjectAccess(session, task.projectId);
 
   const full = await prisma.task.findUnique({
-    where: { id: params.taskId },
+    where: { id: taskId },
     include: {
       project: { select: { id: true, key: true, name: true } },
       assignees: { include: { user: { select: { id: true, name: true, email: true } } } },
@@ -38,7 +39,8 @@ export const GET = withErrorHandling(async (_req, { params }) => {
 // shows exactly what changed, not just "task was updated."
 export const PATCH = withErrorHandling(async (req, { params }) => {
   const session = await requireAuth();
-  const task = await loadTaskOrThrow(params.taskId);
+  const { taskId } = await params;
+  const task = await loadTaskOrThrow(taskId);
   await requireProjectAccess(session, task.projectId);
 
   const body = await req.json();
@@ -57,7 +59,7 @@ export const PATCH = withErrorHandling(async (req, { params }) => {
   if (blockingTaskIds) {
     const [blockerTasks, existingBlockers] = await Promise.all([
       prisma.task.findMany({ where: { id: { in: blockingTaskIds } }, select: { id: true, projectId: true } }),
-      prisma.taskBlocker.findMany({ where: { taskId: params.taskId }, select: { blockingTaskId: true } }),
+      prisma.taskBlocker.findMany({ where: { taskId }, select: { blockingTaskId: true } }),
     ]);
     previousBlockerIds = existingBlockers.map((b) => b.blockingTaskId);
 
@@ -76,30 +78,30 @@ export const PATCH = withErrorHandling(async (req, { params }) => {
   if (blockingTaskIds) {
     const otherEdges = (
       await prisma.taskBlocker.findMany({
-        where: { taskId: { not: params.taskId } },
+        where: { taskId: { not: taskId } },
         select: { taskId: true, blockingTaskId: true },
       })
     ).map((e) => [e.taskId, e.blockingTaskId]);
 
     for (const blockingTaskId of blockingTaskIds) {
-      if (wouldCreateCycle(otherEdges, params.taskId, blockingTaskId)) {
+      if (wouldCreateCycle(otherEdges, taskId, blockingTaskId)) {
         throw new HttpError(
           422,
           `Cannot add "${blockingTaskId}" as a blocker — it would create a circular dependency`
         );
       }
-      otherEdges.push([params.taskId, blockingTaskId]); // so later edges in the same request see this one too
+      otherEdges.push([taskId, blockingTaskId]); // so later edges in the same request see this one too
     }
   }
 
   const updated = await prisma.$transaction(async (tx) => {
-    const t = await tx.task.update({ where: { id: params.taskId }, data: updateData });
+    const t = await tx.task.update({ where: { id: taskId }, data: updateData });
 
     if (blockingTaskIds) {
-      await tx.taskBlocker.deleteMany({ where: { taskId: params.taskId } });
+      await tx.taskBlocker.deleteMany({ where: { taskId } });
       if (blockingTaskIds.length) {
         await tx.taskBlocker.createMany({
-          data: blockingTaskIds.map((id) => ({ taskId: params.taskId, blockingTaskId: id })),
+          data: blockingTaskIds.map((id) => ({ taskId, blockingTaskId: id })),
         });
       }
     }
@@ -108,7 +110,7 @@ export const PATCH = withErrorHandling(async (req, { params }) => {
 
   for (const [field, newValue] of changedFields) {
     await writeTaskEvent({
-      taskId: params.taskId,
+      taskId,
       userId: session.userId,
       type: "FIELD_CHANGE",
       field,
@@ -127,7 +129,7 @@ export const PATCH = withErrorHandling(async (req, { params }) => {
     const removed = previousBlockerIds.filter((id) => !after.has(id));
     if (added.length || removed.length) {
       await writeTaskEvent({
-        taskId: params.taskId,
+        taskId,
         userId: session.userId,
         type: "FIELD_CHANGE",
         field: "blockedBy",
@@ -145,10 +147,11 @@ export const PATCH = withErrorHandling(async (req, { params }) => {
 export const DELETE = withErrorHandling(async (_req, { params }) => {
   const session = await requireAuth();
   requireRole(session, "MANAGER");
-  const task = await loadTaskOrThrow(params.taskId);
+  const { taskId } = await params;
+  const task = await loadTaskOrThrow(taskId);
   await requireProjectAccess(session, task.projectId);
 
-  await prisma.task.delete({ where: { id: params.taskId } });
+  await prisma.task.delete({ where: { id: taskId } });
   return NextResponse.json({ ok: true });
 });
 

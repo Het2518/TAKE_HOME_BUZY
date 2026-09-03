@@ -26,6 +26,7 @@ export const updateProjectSchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().optional(),
   ownerId: z.string().optional(),
+  archived: z.boolean().optional(),
 });
 
 export const createTaskSchema = z.object({

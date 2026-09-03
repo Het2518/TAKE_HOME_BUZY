@@ -11,10 +11,11 @@ import { updateProjectSchema } from "@/lib/validators";
 
 export const GET = withErrorHandling(async (_req, { params }) => {
   const session = await requireAuth();
-  await requireProjectAccess(session, params.projectId);
+  const { projectId } = await params;
+  await requireProjectAccess(session, projectId);
 
   const project = await prisma.project.findUnique({
-    where: { id: params.projectId },
+    where: { id: projectId },
     include: {
       owner: { select: { id: true, name: true, email: true } },
       members: { include: { user: { select: { id: true, name: true, email: true } } } },
@@ -27,15 +28,16 @@ export const GET = withErrorHandling(async (_req, { params }) => {
 // PATCH — edit project fields. Managers only.
 export const PATCH = withErrorHandling(async (req, { params }) => {
   const session = await requireAuth();
+  const { projectId } = await params;
   requireRole(session, "MANAGER");
-  await requireProjectAccess(session, params.projectId);
+  await requireProjectAccess(session, projectId);
 
   const body = await req.json();
   const parsed = updateProjectSchema.safeParse(body);
   if (!parsed.success) throw new HttpError(400, parsed.error.issues[0].message);
 
   const project = await prisma.project.update({
-    where: { id: params.projectId },
+    where: { id: projectId },
     data: parsed.data,
   });
   return NextResponse.json(project);

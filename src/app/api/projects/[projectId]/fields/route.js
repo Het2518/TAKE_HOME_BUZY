@@ -5,8 +5,9 @@ import { requireAuth, requireRole, withErrorHandling, HttpError } from "@/lib/pe
 // GET /api/projects/:id/fields — list custom field definitions for a project
 export const GET = withErrorHandling(async (_req, { params }) => {
   await requireAuth();
+  const { projectId } = await params;
   const fields = await prisma.customFieldDefinition.findMany({
-    where: { projectId: params.projectId },
+    where: { projectId },
     orderBy: { createdAt: "asc" },
   });
   return NextResponse.json(fields);
@@ -16,6 +17,7 @@ export const GET = withErrorHandling(async (_req, { params }) => {
 export const POST = withErrorHandling(async (req, { params }) => {
   const session = await requireAuth();
   requireRole(session, "MANAGER");
+  const { projectId } = await params;
 
   const { name, type, options } = await req.json();
   if (!name) throw new HttpError(400, "name is required");
@@ -27,7 +29,7 @@ export const POST = withErrorHandling(async (req, { params }) => {
 
   const field = await prisma.customFieldDefinition.create({
     data: {
-      projectId: params.projectId,
+      projectId,
       name,
       type: type || "TEXT",
       options: options ? JSON.stringify(options) : null,

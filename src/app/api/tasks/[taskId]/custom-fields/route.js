@@ -5,7 +5,8 @@ import { requireAuth, requireProjectAccess, withErrorHandling, HttpError } from 
 // GET /api/tasks/:id/custom-fields — get all custom field values for a task
 export const GET = withErrorHandling(async (_req, { params }) => {
   const session = await requireAuth();
-  const task = await prisma.task.findUnique({ where: { id: params.taskId } });
+  const { taskId } = await params;
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) throw new HttpError(404, "Task not found");
   await requireProjectAccess(session, task.projectId);
 
@@ -16,7 +17,7 @@ export const GET = withErrorHandling(async (_req, { params }) => {
       orderBy: { createdAt: "asc" },
     }),
     prisma.customFieldValue.findMany({
-      where: { taskId: params.taskId },
+      where: { taskId },
     }),
   ]);
 
@@ -33,7 +34,8 @@ export const GET = withErrorHandling(async (_req, { params }) => {
 // PATCH /api/tasks/:id/custom-fields — set custom field values { fieldId: value, ... }
 export const PATCH = withErrorHandling(async (req, { params }) => {
   const session = await requireAuth();
-  const task = await prisma.task.findUnique({ where: { id: params.taskId } });
+  const { taskId } = await params;
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) throw new HttpError(404, "Task not found");
   await requireProjectAccess(session, task.projectId);
 
@@ -44,8 +46,8 @@ export const PATCH = withErrorHandling(async (req, { params }) => {
 
   for (const [fieldId, value] of Object.entries(updates)) {
     await prisma.customFieldValue.upsert({
-      where: { taskId_fieldId: { taskId: params.taskId, fieldId } },
-      create: { taskId: params.taskId, fieldId, value: String(value) },
+      where: { taskId_fieldId: { taskId, fieldId } },
+      create: { taskId, fieldId, value: String(value) },
       update: { value: String(value) },
     });
   }

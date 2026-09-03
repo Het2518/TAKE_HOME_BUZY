@@ -7,6 +7,7 @@ import { writeTaskEvent } from "@/lib/auditLog";
 export const POST = withErrorHandling(async (req, { params }) => {
   const session = await requireAuth();
   requireRole(session, "MANAGER");
+  const { projectId } = await params;
 
   const { userId } = await req.json();
   if (!userId) throw new HttpError(400, "userId is required");
@@ -15,8 +16,8 @@ export const POST = withErrorHandling(async (req, { params }) => {
   if (!user) throw new HttpError(404, "User not found");
 
   const membership = await prisma.projectMember.upsert({
-    where: { projectId_userId: { projectId: params.projectId, userId } },
-    create: { projectId: params.projectId, userId },
+    where: { projectId_userId: { projectId, userId } },
+    create: { projectId, userId },
     update: {},
   });
 
@@ -28,6 +29,7 @@ export const POST = withErrorHandling(async (req, { params }) => {
 export const DELETE = withErrorHandling(async (req, { params }) => {
   const session = await requireAuth();
   requireRole(session, "MANAGER");
+  const { projectId } = await params;
 
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
@@ -36,7 +38,7 @@ export const DELETE = withErrorHandling(async (req, { params }) => {
   await prisma.$transaction(async (tx) => {
     // Find this user's assignments within this specific project's tasks.
     const assignments = await tx.taskAssignee.findMany({
-      where: { userId, task: { projectId: params.projectId } },
+      where: { userId, task: { projectId } },
     });
 
     for (const a of assignments) {
@@ -48,11 +50,11 @@ export const DELETE = withErrorHandling(async (req, { params }) => {
         field: "assignee",
         oldValue: userId,
         newValue: null,
-      });
+      }, tx);
     }
 
     await tx.projectMember.delete({
-      where: { projectId_userId: { projectId: params.projectId, userId } },
+      where: { projectId_userId: { projectId, userId } },
     });
   });
 

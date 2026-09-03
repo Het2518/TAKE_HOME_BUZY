@@ -11,8 +11,9 @@ import { writeTaskEvent } from "@/lib/auditLog";
 // a direct API call with an illegal target must still be rejected with a clear reason.
 export const PATCH = withErrorHandling(async (req, { params }) => {
   const session = await requireAuth();
+  const { taskId } = await params;
 
-  const task = await prisma.task.findUnique({ where: { id: params.taskId } });
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) throw new HttpError(404, "Task not found");
   await requireProjectAccess(session, task.projectId);
 
